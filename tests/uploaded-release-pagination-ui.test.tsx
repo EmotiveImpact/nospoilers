@@ -86,7 +86,7 @@ it('preserves an off-page selected record without inserting it into the ten-row 
  expect(within(screen.getByRole('table')).queryByText('distant build.zip')).toBeNull();
  expect(screen.getByRole('navigation').textContent).toContain('Page 1 · 10 builds');
  expect(screen.getByRole('status').textContent).toContain('outside the selected status filter or history page');
- await userEvent.click(screen.getByRole('button',{name:'Open full release brief'}));
+ await userEvent.click(screen.getByRole('button',{name:'Open full release check'}));
  expect(new URLSearchParams(window.location.search).get('upload')).toBe('linked');
  expect(new URLSearchParams(window.location.search).get('uploadView')).toBe('detail');
 });

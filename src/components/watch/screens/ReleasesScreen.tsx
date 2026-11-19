@@ -2,6 +2,7 @@ import '../design/release-journey.css';
 import '../release-responsive.css';
 import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
+import { releaseSummary, useRailEntries } from "@/components/watch/RailWatchList";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';
 import {HostedDecisionList} from '../HostedDecisionList';
 import {ConnectedReleaseTable} from '../ConnectedReleaseTable';
@@ -67,6 +68,7 @@ export function ReleasesScreen() {
     watchHref,
     watchPath,
   } = useWatchScreenContext();
+  const latest = useRailEntries(new URLSearchParams(search).get("workspace"));
 
   if (route.view !== "releases") return null;
   if (route.releaseId && selectedRelease) return <WatchReleaseBrief release={selectedRelease} />;
@@ -140,8 +142,8 @@ export function ReleasesScreen() {
   return (
     <section className="watch-release-index" aria-label="Releases">
       <WatchPageHeader
-        title="Releases"
-        lede="Choose a saved release, understand its decision, then open the complete evidence brief."
+        title="Releases."
+        status={releaseSummary(latest)}
         action={
           canExportReleases && showRepositoryLedger && browser==='connected' ? (
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
@@ -150,7 +152,6 @@ export function ReleasesScreen() {
           ) : <Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>
         }
       />
-      <p className="journey-release-scope">Uploaded and website evidence belongs to this workspace. Connected GitHub releases remain scoped to the selected installation.</p>
 
       <div className="journey-release-tabs release-collection-tabs" role="tablist" aria-label="Release history type" onKeyDown={event=>{
         if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
@@ -159,7 +160,7 @@ export function ReleasesScreen() {
         const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
         tabs[next].focus();tabs[next].click();
       }}>
-        {(['uploads','connected','attempts'] as const).filter(value=>value!=='connected'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} onClick={()=>chooseBrowser(value)}>{value==='uploads'?'Recorded releases':value==='attempts'?'Attempts':'Connected releases'}</button>)}
+        {(['uploads','connected','attempts'] as const).filter(value=>value!=='connected'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} onClick={()=>chooseBrowser(value)}>{value==='uploads'?'Recorded releases':value==='attempts'?'Attempts':'Connected releases'}{value==='uploads'&&latest.length?<span>{latest.length}</span>:value==='connected'&&releases.length?<span>{releases.length}</span>:null}</button>)}
       </div>
       <div role="tabpanel" id={`${browserId}-panel`} aria-labelledby={`${browserId}-${browser}`}>
       {browser!=='connected'?<UploadedReleases search={search} installationId={uploadInstallationId} collection={browser} />:null}
@@ -239,7 +240,7 @@ export function ReleasesScreen() {
                     )
                   }
                 >
-                  Open full release brief <ArrowRight className="size-4" aria-hidden />
+                  Open full release check <ArrowRight className="size-4" aria-hidden />
                 </Button>
                 <Button
                   type="button"

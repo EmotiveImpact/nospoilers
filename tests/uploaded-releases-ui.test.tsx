@@ -157,7 +157,7 @@ it('opens the selected full brief through one primary action and preserves works
  fireEvent.click(screen.getByRole('button',{name:/second.zip/}));
  view.rerender(<UploadedReleases installationId={7} search={window.location.search}/>);
  await screen.findByRole('heading',{name:'second.zip'});
- const actions=screen.getAllByRole('button',{name:'Open full release brief'});
+ const actions=screen.getAllByRole('button',{name:'Open full release check'});
  expect(actions).toHaveLength(1);fireEvent.click(actions[0]);
  const params=new URLSearchParams(window.location.search);
  expect(params.get('workspace')).toBe('team');expect(params.get('install')).toBe('7');

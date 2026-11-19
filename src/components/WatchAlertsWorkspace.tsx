@@ -16,6 +16,7 @@ import type { AlertTab } from "@/watch/routes.ts";
 import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 
 function alertQueueCopy(row: AlertListViewModel) {
@@ -210,7 +211,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="watch-page-status"><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</p></div>
         {!previewing || onAssignedToMe ? (
           <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
             {!previewing ? (
@@ -327,8 +328,9 @@ export function WatchAlertsWorkspace({
                     )}
                     onClick={() => onSelect(row.id)}
                   >
+                    <span className="alerts-row-top" aria-hidden><span className={cn("alerts-row-chip", row.status === "resolved" ? "is-done" : row.operational || row.queueKind === "incomplete-check" ? "is-check" : row.queueKind === "coverage" ? "is-coverage" : row.severity === "critical" ? "is-critical" : "is-high")}>{row.status === "resolved" ? "Resolved" : row.operational || row.queueKind === "incomplete-check" ? "Check" : row.queueKind === "coverage" ? "Coverage" : row.severity === "critical" ? "Critical" : "High"}</span>{/^[A-Z]{2,}-\d+$/.test(row.rule) ? <code>{row.rule}</code> : null}</span>
                     <strong className="alerts-journey-row-title line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
-                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-danger-text")}>{copy.summary}</span>:null}
+                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-mute")}>{copy.summary}</span>:null}
                   </button>
                 </li>;
               })])
@@ -385,8 +387,8 @@ export function WatchAlertsWorkspace({
                   </Button>
                 ) : null}
                 <div className="ml-auto flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button>
-                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
+                  <Tooltip label="Previous alert" shortcut="K"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button></Tooltip>
+                  <Tooltip label="Next alert" shortcut="J"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button></Tooltip>
                 </div>
               </div>
               <div className="alerts-journey-detail-scroll min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
@@ -396,8 +398,9 @@ export function WatchAlertsWorkspace({
                       {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : selectedIsEvent?"Event to review":"Finding needs review"}
                     </span>
                   </div>
-                  <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
+                  <h1 className="alerts-detail-title mt-3 font-display text-snow [overflow-wrap:anywhere]">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
+                  <AlertProgress alert={selected}/>
 
                   <AlertFixBrief key={selected.id} alert={selected} operational={selectedRow.operational}/>
                   {!selectedRow.operational && selected.kind!=='push_sensitive_path' && (!selectedIsEvent||selected.full_name) ? <>
@@ -550,4 +553,18 @@ export function WatchAlertsWorkspace({
       </Dialog>
     </section>
   );
+}
+
+const progressTime=(value:string)=>new Date(value).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+/** Where the response stands, from the recorded alert state only. */
+export function AlertProgress({alert}:{alert:Pick<WatchAlertDetail,'created_at'|'acknowledged_at'|'acknowledged_by_login'|'resolved_at'|'resolved_by_login'>}) {
+  const steps=[
+    {label:'Opened',detail:progressTime(alert.created_at),done:true},
+    {label:'Acknowledged',detail:alert.acknowledged_at?`${alert.acknowledged_by_login?`${alert.acknowledged_by_login} · `:''}${progressTime(alert.acknowledged_at)}`:'Not yet',done:!!alert.acknowledged_at||!!alert.resolved_at},
+    {label:'Resolved',detail:alert.resolved_at?`${alert.resolved_by_login?`${alert.resolved_by_login} · `:''}${progressTime(alert.resolved_at)}`:'Not yet',done:!!alert.resolved_at},
+  ];
+  const current=steps.findIndex(step=>!step.done);
+  return <ol className="alert-progress" aria-label="Response progress">
+    {steps.map((step,index)=><li key={step.label} className={step.done?'is-done':index===current?'is-current':''} aria-current={index===current?'step':undefined}><i aria-hidden/><span><strong>{step.label}</strong><small>{step.detail}</small></span></li>)}
+  </ol>;
 }

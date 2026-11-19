@@ -9,7 +9,7 @@ import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { watchPath } from "@/watch/routes.ts"
 import { ChevronRight, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload, X } from "lucide-react"
-import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
 import {GithubRepositoryScan} from '@/components/watch/GithubRepositoryScan'
@@ -315,11 +315,11 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   return (
     <main className={cn("scan-workspace mx-auto w-full max-w-6xl", embedded ? "pb-12" : "px-5 py-12 md:py-16")}>
 
-      <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-        Check what you’re about to ship.
+      <h1 className={cn("watch-page-title", embedded ? "" : "mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl")}>
+        {embedded ? "New scan." : "Check what you’re about to ship."}
       </h1>
-      <p className="mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg">
-        Choose the exact artifact your customers will receive.
+      <p className={embedded ? "watch-page-status" : "mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg"}>
+        {embedded ? <><i className="watch-rail-dot is-pending" aria-hidden />Pick the exact build your customers will receive</> : "Choose the exact artifact your customers will receive."}
       </p>
 
       {showPrerequisite ? (
@@ -357,11 +357,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       {mode === "github" ? (
         <section className="scan-launch-layout" aria-labelledby="github-connect-title">
           <section className="scan-launch-panel">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
-            <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              {session&&selectedInstall?"Inspect the assets attached to a published release, not the repository source code.":"Connect GitHub, choose a repository, then scan its published release assets."}
-            </p>
+            <h2 id="github-connect-title" className={session&&selectedInstall?"sr-only":"scan-panel-title"}>{session&&selectedInstall?"Check a connected release":"Connect the repository behind your release"}</h2>
+            {!(session&&selectedInstall)?<p className="scan-panel-line">Connect GitHub, choose a repository, then scan its published release assets.</p>:null}
             {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
             {!session || !selectedInstall ? <div className="mt-7 flex flex-wrap items-center gap-3">
               {!sessionReady||sessionError||session ? null : auth.githubApp ? (
@@ -378,16 +375,12 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
             {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={`?${scope}`} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
             {session&&selectedInstall&&!lockReason&&!sessionError&&workspaceId ? (
               <section className="scan-add-source" aria-labelledby="github-add-source-title">
-                <h3 id="github-add-source-title" className="mb-4 font-display text-lg text-snow">Another GitHub source?</h3>
+                <h3 id="github-add-source-title">Another GitHub source?</h3>
                 <GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={lockReason} compact/>
               </section>
             ) : null}
           </section>
-          <aside className="scan-scope-note">
-            <h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>The connection’s configured scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul>
-            <h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p>
-            <a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight className="size-4" aria-hidden /></a>
-          </aside>
+          <ScanScopeNote policy="The connection’s scan policy" href={scopedPath('policy')} onFollow={followAppLink}/>
         </section>
       ) : null}
 
@@ -395,8 +388,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         <>
           <div className="scan-launch-layout">
             <section className="scan-launch-panel" aria-labelledby="package-scan-title">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Package or build</p>
-              <h2 id="package-scan-title" className="mt-3 font-display text-2xl text-snow">Drop the exact artifact you plan to release.</h2>
+              <h2 id="package-scan-title" className="sr-only">Drop the exact artifact you plan to release</h2>
               {productWorkspace?<p className="mt-5 text-sm text-mute">Saving in <strong className="text-snow">{productWorkspace.name}</strong></p>:session ? <label className="mt-5 block text-sm text-mute">Save this release in
                 <AppSelect label={`Save this release in`} className="mt-2 block w-full rounded-lg border border-white/15 bg-black p-3 text-snow" value={selectedInstall ?? ''} onValueChange={(nextValue) => {
                   const params = new URLSearchParams(search)
@@ -408,11 +400,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                   {session.installations?.map(item => <option key={item.id} value={item.id}>{item.account_login}{item.suspended ? ' · suspended' : ''}</option>)}
                 </AppSelect>
               </label> : null}
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-                Choose the packaged build your customers receive. Review the selected file before starting your scan.
-                {session && coverage?.status === "trial" ? " Hosted scanning is active for your trial." : null}
-              </p>
-              <div className="relative mt-7 min-h-52">
+              <div className="relative">
                 <Field>
                   <Label
                     htmlFor={locked ? undefined : inputId}
@@ -429,8 +417,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                     className={cn("scan-dropzone", locked && "is-locked", !locked && dragOver && "is-dragging")}
                   >
                     <Upload className="h-6 w-6 text-mute" aria-hidden />
-                    <strong>Drop your release archive here</strong>
-                    <Description>.zip, .tgz, .tar and supported packages · up to {session?80:25} MiB</Description>
+                    <strong>Drop a .tgz, .zip, installer or CI output</strong>
+                    <Description>Up to {session?80:25} MiB · nothing is installed or run</Description>
                     <span className="scan-choose-file"><FileText className="size-4" aria-hidden />Choose file</span>
                     {!locked ? (
                       <input id={inputId} aria-label="Drop a package or build here" type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
@@ -444,8 +432,9 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 <p className="scan-build-note">Artifacts are inspected, never executed.</p>
               </>:null}
             </section>
-            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : state.status === "idle" ? <aside className="scan-scope-note"><h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>Your workspace scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul><h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p><p>Each result records the supported checks, findings, and limits of that evidence.</p><a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight size={14} aria-hidden /></a></aside> : <ResultsPanel state={state} locked={locked} auth={auth} />}
+            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : state.status === "idle" ? null : <ResultsPanel state={state} locked={locked} auth={auth} />}
           </div>
+          {uploadProgress===null&&state.status==="idle"?<ScanScopeNote policy="Your workspace scan policy" href={scopedPath('policy')} onFollow={followAppLink}/>:null}
 
           {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}
         </>
@@ -454,12 +443,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       {mode === "website" ? (
         <section className="scan-website-panel" aria-labelledby="website-connect-title">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Production website</p>
-            <h2 id="website-connect-title" className="mt-3 font-display text-3xl text-snow">Start with the origin you control.</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              {session ? 'Enter the public URL, then verify ownership in this workspace before starting a check. Monitoring is enabled separately.' : 'Enter the public URL now, then sign in to verify ownership before starting a check.'}
-              {' '}NoSpoilers does not scan or expose evidence for an unverified third-party site.
-            </p>
+            <h2 id="website-connect-title" className="scan-panel-title">Start with the origin you control</h2>
+            <p className="scan-panel-line">{session ? 'Enter the public URL, then verify ownership before the first check.' : 'Enter the public URL, then sign in to verify ownership.'} Unverified third-party sites are never scanned.</p>
             <form className="scan-website-form" onSubmit={(event) => { event.preventDefault(); void continueWebsite() }}>
               <label htmlFor="scan-website-url">HTTPS production URL</label>
               <div>
@@ -473,7 +458,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
             </form>
           </div>
           <aside>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What happens next</p>
+            <h3>What happens next</h3>
             <ol>
               <li><span>1</span><div><strong>Add the origin</strong><small>Enter the exact production hostname.</small></div></li>
               <li><span>2</span><div><strong>Verify ownership</strong><small>Keep private evidence away from unauthorised scans.</small></div></li>
@@ -486,20 +471,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       {mode === "receipt" ? <ReceiptVerifyPanel /> : null}
       </div>
 
-      {mode === "package" && !locked ? (
-        <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
-          <Step n="01" title="Pack as usual">
-            Run <code className="text-mute">npm pack</code> or build the Electron asar. Scan that
-            file, not the git tree.
-          </Step>
-          <Step n="02" title="Review the evidence">
-            Your authenticated scan runs in a queue. Open Releases to follow its progress and inspect the saved findings.
-          </Step>
-          <Step n="03" title="Keep the map private">
-            Upload hidden source maps to Sentry. Do not put them in the installer.
-          </Step>
-        </section>
-      ) : null}
+
 
       <p className="scan-trust-note">
         <LockKeyhole className="size-4" aria-hidden />
@@ -512,16 +484,6 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               : "Proof verification checks authenticity without starting a paid scan."}
       </p>
     </main>
-  )
-}
-
-function Step({ n, title, children }: { n: string; title: string; children: ReactNode }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-[0.22em] text-dim">{n}</p>
-      <h2 className="mt-3 font-display text-lg text-snow">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-dim">{children}</p>
-    </div>
   )
 }
 
@@ -911,6 +873,31 @@ function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boole
           </ul>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function ScanScopeNote({ policy, href, onFollow }: { policy: string; href: string; onFollow: (event: MouseEvent<HTMLAnchorElement>) => void }) {
+  return (
+    <div className="scan-scope-pair">
+      <section aria-label="What this checks">
+        <h3>What this checks</h3>
+        <ul className="scan-check-list">
+          <li><span className="scan-check-icon"><FileText aria-hidden /></span>Source maps and original source files</li>
+          <li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span>Secrets, keys and sensitive files</li>
+          <li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span>{policy}</li>
+        </ul>
+      </section>
+      <section aria-label="What this doesn’t prove">
+        <h3>What this doesn’t prove</h3>
+        <ul className="scan-limit-list">
+          <li>That your deployed website matches, unless you add a website check</li>
+          <li>That nobody downloaded a file before the check</li>
+          <li>The absence of every vulnerability</li>
+        </ul>
+        <p className="scan-limit-note">Each result records the supported checks, findings, and limits of that evidence.</p>
+        <a onClick={onFollow} href={href}>Review scan rules <ChevronRight size={14} aria-hidden /></a>
+      </section>
     </div>
   )
 }

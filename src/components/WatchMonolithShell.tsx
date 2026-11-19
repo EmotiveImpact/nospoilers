@@ -1,9 +1,14 @@
+import { useAnimate, useReducedMotion } from "motion/react";
+import { RailWatchList } from "@/components/watch/RailWatchList";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSelect } from "@/components/ui/app-select";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
 import './watch/design/journey-shell.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
+import './watch/design/retheme.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -316,8 +321,8 @@ export function WatchMonolithShell({
         </div>
         {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId} choices={workspaceChoices}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
-          <label className="mt-3 block">
-            <span className="watch-kicker">GitHub source</span>
+          <label className="watch-source-picker mt-2 block">
+            <span className="sr-only">GitHub source</span>
             <AppSelect label={`GitHub source`}
               value={activeInstallId ?? ""}
               onValueChange={(nextValue) => {
@@ -408,6 +413,7 @@ export function WatchMonolithShell({
             <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
           </a>
         </div>
+      {opts.collapsed ? null : <RailWatchList workspaceId={workspaceId} search={search} onNavigate={closeNav} />}
       </nav>
 
       <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>
@@ -428,8 +434,16 @@ export function WatchMonolithShell({
     </>
   );
 
+  const reduceMotion = useReducedMotion();
+  // Fade each new page in without remounting it, so focus and page state survive the change.
+  const [viewScope, animateView] = useAnimate<HTMLDivElement>();
+  useEffect(() => {
+    if (reduceMotion || !viewScope.current) return;
+    animateView(viewScope.current, { opacity: [0, 1], y: [4, 0] }, { duration: 0.18, ease: [0.2, 0.7, 0.2, 1] });
+  }, [route.view, reduceMotion, animateView, viewScope]);
   const PageIcon = watchViewIcon(watchPath(route.view));
   return (
+    <TooltipProvider>
     <div className="watch-desk">
       <aside
         className={cn(
@@ -514,10 +528,12 @@ export function WatchMonolithShell({
             "[&_.watch-guidance]:hidden",
           )}
         >
-          {settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}
+          <div ref={viewScope} className="watch-view-enter">{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</div>
         </div>
         </div>
       </div>
     </div>
+    <Toaster/>
+    </TooltipProvider>
   );
 }

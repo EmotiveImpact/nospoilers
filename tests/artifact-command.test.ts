@@ -40,3 +40,16 @@ it('keeps real result categories together and permission-limited routes unavaila
  expect(buildPaletteItems({...base,query:'audit'})).toEqual([]);
  expect(buildPaletteItems({...base,query:'not a saved record'})).toEqual([]);
 });
+it('searches an independent workspace’s own saved releases and open alerts',()=>{
+ const base={search:'?workspace=one',teamOnly:false,adminOnly:false,artifactOnly:true,alerts:[{id:9,title:'Installation alert'}],sources:[],releases:[]};
+ const items=buildPaletteItems({...base,query:'acme',uploads:[{id:'u1',target:'acme-cli-2.4.1.tgz',kind:'artifact',verdict:'Review findings'}],workspaceAlerts:[{id:3,title:'acme-cli exposes original source'}]});
+ expect(items.map(item=>item.id)).toEqual(expect.arrayContaining(['upload-u1','alert-3']));
+ const upload=items.find(item=>item.id==='upload-u1')!;
+ expect(upload.detail).toBe('Release artifact · Needs review');
+ const url=new URL(upload.href,'https://example.com');
+ expect(url.pathname).toBe('/watch/releases');
+ expect(url.searchParams.get('workspace')).toBe('one');
+ expect(url.searchParams.get('upload')).toBe('u1');
+ expect(url.searchParams.get('uploadView')).toBe('detail');
+ expect(buildPaletteItems({...base,query:'Installation'})).toEqual([]);
+});

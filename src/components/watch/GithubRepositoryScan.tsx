@@ -81,7 +81,7 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
   }
   const chooseRepository=(value:string)=>{setSelected(value);setNotice('');setError('');setJobId(null);setProgressError('');};
   return <section className="scan-repository-picker" aria-label="Choose repository to scan">
-    <div className="scan-repository-heading"><h3>Re-check a connected release</h3><p>Connected repositories are watched automatically. Choose one here only when you want to check its latest published release again now.</p></div>
+    <div className="scan-repository-heading"><h3>Re-check a connected release</h3><p>Connected repositories are already watched. Pick one to check its latest release now.</p></div>
     {repos===null&&!error?<WatchSkeleton variant="list"/>:null}
     {repos?<>{repos.length?<><div className="scan-repository-controls"><div><span className="scan-field-label">Repository</span><RepositoryPicker repos={repos} value={selected} onChange={chooseRepository} disabled={busy}/></div>
       <Button disabled={!repo||!!disabledReason||busy||pendingRepositories.has(selected)} onClick={()=>void scan()}>{busy?'Queuing release check…':'Scan latest release'}</Button></div>

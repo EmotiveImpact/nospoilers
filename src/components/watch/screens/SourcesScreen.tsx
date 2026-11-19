@@ -18,7 +18,7 @@ export function SourcesScreen() {
   const managedRepos=(previewing||repos?.status==='ready')?(deskRepos??[]).filter(repo=>`repo-${repo.id}`===route.sourceKey):[];
   const healthWorkspace=new URLSearchParams(search).get('workspace');
   if(route.view==='sources'&&healthWorkspace&&hasWorkspaceCoverageHealthFilter(search))return <WorkspaceCoverageHealth workspaceId={healthWorkspace} search={search}/>;
-  if(route.view==='sources'&&sourceSectionState.status==='loading')return <section aria-busy="true"><WatchPageHeader title="Know what’s being checked." lede="Connection, monitoring and latest result are separate states."/></section>;
+  if(route.view==='sources'&&sourceSectionState.status==='loading')return <section aria-busy="true"><WatchPageHeader title="Coverage."/></section>;
   return (
     <>
       {route.view === "sources" && (

@@ -3,6 +3,8 @@ import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/re
 import { ArrowRight, Bell, Box, FileCheck2, PanelTop, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "@/nav.ts";
+import { uploadVerdict } from "@/watch/upload-verdict";
+import type { ScanReport } from "@/report-types";
 import { ListPagination } from '@/components/watch/ListPagination';
 import type { PageSize } from '@/watch/pagination';
 import {
@@ -20,8 +22,52 @@ type WatchCommandPaletteProps = {
   alerts: { id: number; title: string }[];
   sources: { key: string; name: string }[];
   releases: { id: number; coordinate: string }[];
+  /** Independent workspace whose saved releases and open alerts the palette can search. */
+  workspaceId?: string;
   onClose: () => void;
 };
+
+type WorkspaceEntities = {
+  alerts: { id: number; title: string }[];
+  uploads: { id: string; target: string; kind: "website" | "artifact"; verdict?: string }[];
+};
+
+/** Loads a workspace's recent saved releases and open alerts once, when the palette opens. */
+function useWorkspaceEntities(workspaceId: string | undefined): WorkspaceEntities | null {
+  const [entities, setEntities] = useState<{ id: string; value: WorkspaceEntities } | null>(null);
+  useEffect(() => {
+    if (!workspaceId) return;
+    const controller = new AbortController();
+    const get = async <T,>(url: string): Promise<T | null> => {
+      try {
+        const response = await fetch(url, { signal: controller.signal, credentials: "include" });
+        return response.ok ? ((await response.json()) as T) : null;
+      } catch {
+        return null;
+      }
+    };
+    const id = encodeURIComponent(workspaceId);
+    void Promise.all([
+      get<{ uploads?: { id: string; target: string; status?: string; report_json?: ScanReport | null }[] }>(`/api/uploads?workspaceId=${id}&collection=uploads&pageSize=60`),
+      get<{ alerts?: { id: number; title: string }[] }>(`/api/workspaces/${id}/alerts?status=open&mine=0&pageSize=60`),
+    ]).then(([uploads, alerts]) => {
+      if (controller.signal.aborted) return;
+      setEntities({
+        id: workspaceId,
+        value: {
+          alerts: Array.isArray(alerts?.alerts) ? alerts.alerts.filter((row) => typeof row.id === "number" && typeof row.title === "string") : [],
+          uploads: Array.isArray(uploads?.uploads)
+            ? uploads.uploads
+                .filter((row) => typeof row.id === "string" && typeof row.target === "string")
+                .map((row) => ({ id: row.id, target: row.target, kind: /^https?:\/\//i.test(row.target) ? "website" : "artifact", verdict: typeof row.status === "string" ? uploadVerdict(row.status, row.report_json ?? null) : undefined }))
+            : [],
+        },
+      });
+    });
+    return () => controller.abort();
+  }, [workspaceId]);
+  return workspaceId && entities?.id === workspaceId ? entities.value : null;
+}
 
 export function WatchCommandPalette(props: WatchCommandPaletteProps) {
   return props.open ? <OpenCommandPalette {...props} /> : null;
@@ -36,8 +82,10 @@ function OpenCommandPalette({
   alerts,
   sources,
   releases,
+  workspaceId,
   onClose,
 }: WatchCommandPaletteProps) {
+  const workspaceEntities = useWorkspaceEntities(artifactOnly ? workspaceId : undefined);
   const reduceMotion = useReducedMotion();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -45,8 +93,8 @@ function OpenCommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxId = useId();
   const items = useMemo(
-    () => buildPaletteItems({ query, search, teamOnly, adminOnly, artifactOnly, alerts, sources, releases }),
-    [adminOnly, artifactOnly, alerts, query, releases, search, sources, teamOnly],
+    () => buildPaletteItems({ query, search, teamOnly, adminOnly, artifactOnly, alerts, sources, releases, uploads: workspaceEntities?.uploads, workspaceAlerts: workspaceEntities?.alerts }),
+    [adminOnly, artifactOnly, alerts, query, releases, search, sources, teamOnly, workspaceEntities],
   );
   const active = items[activeIndex] ?? items[0] ?? null;
   const page = Math.floor((items[activeIndex] ? activeIndex : 0) / pageSize);

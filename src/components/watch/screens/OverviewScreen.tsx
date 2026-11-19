@@ -4,7 +4,7 @@ import {ArtifactOverview} from '../ArtifactOverview';
 export function OverviewScreen() {
   const { WatchOverview, deskAlerts, ended, githubApp, githubPaused, installUrl, jobSummary, overviewSectionState, releases, retryDeskSection, route, search, setup, sourceRows, user } = useWatchScreenContext();
   const workspaceId=new URLSearchParams(search).get('workspace');
-  if(route.view==='overview'&&workspaceId)return <ArtifactOverview workspaceId={workspaceId} search={search} nowLabel={new Date().toLocaleDateString()}/>;
+  if(route.view==='overview'&&workspaceId)return <ArtifactOverview workspaceId={workspaceId} search={search} name={user?.login} nowLabel={new Date().toLocaleDateString()}/>;
   return (
     <>
       {route.view === "overview" ? (

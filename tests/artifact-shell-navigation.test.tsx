@@ -28,7 +28,7 @@ it('focuses a changed page while preserving initial and same-page query focus',a
  const scroll=vi.fn();Element.prototype.scrollTo=scroll;
  const view=render(<Route path="/watch"/>);
  const control=screen.getByRole('button',{name:'Page control'});
- expect(document.activeElement).not.toBe(screen.getByRole('region'));
+ expect(document.activeElement).not.toBe(screen.getByRole('region',{name:/ page$/}));
  control.focus();view.rerender(<Route path="/watch" search="?workspace=other"/>);
  expect(document.activeElement).toBe(control);expect(scroll).not.toHaveBeenCalled();
  view.rerender(<Route path="/watch/scan" search="?workspace=other"/>);

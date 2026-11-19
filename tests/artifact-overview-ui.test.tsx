@@ -12,7 +12,7 @@ it('matches the approved composition without old panels, release-mode tabs or an
  await screen.findByRole('heading',{name:'Your latest release evidence is ready.'});
  expect(screen.getByRole('columnheader',{name:'Build'})).toBeTruthy();
  expect(screen.getByRole('columnheader',{name:'Files'})).toBeTruthy();
- const recent=screen.getByRole('heading',{name:'Latest releases'});
+ const recent=screen.getByRole('heading',{name:'Recent releases'});
  const activity=screen.getByRole('heading',{name:'Source activity'});
  expect(recent.compareDocumentPosition(activity)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(screen.queryByRole('heading',{name:'Connected monitoring'})).toBeNull();
@@ -33,7 +33,7 @@ it('opens the latest evidence directly and keeps workspace and installation scop
 });
 it('places a repository exposure ahead of a passing upload and routes to the exact alert',async()=>{
  load({alertCounts:{open:1,waiting:0,done:0,mine:0},priorityAlert:{id:77,title:'Public repository detected',body:'Repository visibility changed.',kind:'repo_publicized',findings:[],created_at:'2026-09-05T13:00:00Z',acknowledged_at:null,resolved_at:null,status:'open'}});
- expect(await screen.findByRole('heading',{name:'One release alert needs your response.'})).toBeTruthy();
+ expect(await screen.findByText('One release alert needs your response.')).toBeTruthy();
  expect(screen.getAllByText('Repository exposure').length).toBeGreaterThan(0);
  expect(screen.getByRole('heading',{name:'Public repository detected'})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Review alert'}));
@@ -47,21 +47,20 @@ it('uses recorded severity from every finding in the priority alert',async()=>{
 it('does not claim unavailable file counts or production verification',async()=>{
  load();await screen.findByRole('table');
  expect(screen.getByLabelText('File count not available in this summary').textContent).toBe('—');
- expect(screen.getByText('Production evidence remains a separate lane')).toBeTruthy();
  expect(screen.queryByText('Production not checked')).toBeNull();
 });
 it('prioritises a returned release that needs review over a newer passing record',async()=>{
  load({recent:[data.recent[0],{...data.recent[0],id:'review',target:'needs-review.tgz',created_at:'2026-09-04T12:00:00Z',verdict:'Review findings'}]});
  expect(await screen.findByRole('heading',{name:'One release needs review.'})).toBeTruthy();
- expect(screen.getByRole('heading',{name:/Release artifact.*needs-review\.tgz/})).toBeTruthy();
- expect(screen.getByRole('region',{name:'Saved release reviews'})).toBeTruthy();
+ expect(screen.getByText((_,el)=>el?.classList.contains('overview-hero-kind')===true&&/Release artifact.*needs-review\.tgz/.test(el.textContent??''))).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Needs you'})).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Review needs-review.tgz'})).toBeTruthy();
  expect(screen.getByRole('complementary',{name:'Coverage status'})).toBeTruthy();
 });
 it('keeps saved release reviews separate from the alert response queue',async()=>{
  load({counts:{total:1,active:0,attention:1,completedAttention:1,attemptAttention:0,passed:0},alertCounts:{open:0,waiting:0,done:0,mine:0},recent:[{...data.recent[0],id:'review',target:'needs-review.tgz',verdict:'Review findings'}]});
- const reviews=await screen.findByRole('region',{name:'Saved release reviews'});
- expect(within(reviews).getByRole('heading',{name:'Release reviews'})).toBeTruthy();
- expect(within(reviews).getByText('Saved scan evidence is reviewed in Releases. Alerts is a separate response queue.')).toBeTruthy();
+ const reviews=await screen.findByRole('region',{name:'Needs you'});
+ expect(within(reviews).getByRole('heading',{name:/^Needs you/})).toBeTruthy();
  fireEvent.click(within(reviews).getByRole('button',{name:'Open Alerts response queue, 0 alerts need response'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
 });
@@ -71,7 +70,7 @@ it('uses only actual completed returned records for daily activity',async()=>{
  await screen.findByRole('table');
  expect(screen.getByLabelText(new RegExp('Uploaded builds, .*: 1 returned checks'))).toBeTruthy();
  expect(screen.queryByLabelText(new RegExp('Uploaded builds, .*: 2 returned checks'))).toBeNull();
- expect(screen.getByText(/Activity uses the latest five returned scans/)).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Source activity'}).getAttribute('title')).toMatch(/latest five returned scans/);
 });
 it.each([{total:2,paused:1,unavailable:0},{total:2,paused:0,unavailable:1},{total:3,paused:1,unavailable:1}])('preserves connected-source first-check guidance: %j',async coverage=>{
  load({counts:{total:0,active:0,attention:0,passed:0},recent:[],connectedCoverage:{...coverage,unknown:1,delayed:0,recent:0}});
@@ -112,7 +111,7 @@ it('does not allow an archived workspace to start a scan',async()=>{
 });
 it('labels website evidence correctly',async()=>{
  load({recent:[{...data.recent[0],target:'https://example.com/',source_kind:'website'}]});
- expect(await screen.findByRole('heading',{name:/^Website check/})).toBeTruthy();
+ expect(await screen.findByText((_,el)=>el?.classList.contains('overview-hero-kind')===true&&/^Website check/.test(el.textContent??''))).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'View evidence for https://example.com/'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=7&upload=scan&uploadView=detail');
 });
@@ -163,4 +162,12 @@ it('routes independent workspace activity to supported release history',async()=
 it('keeps connected workspace timeline access',async()=>{
  load();fireEvent.click(await screen.findByRole('button',{name:'View timeline'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/timeline?workspace=workspace&install=7');
+});
+it('lists the other open alerts in Needs you, below the priority alert',async()=>{
+ load({alertCounts:{open:3,waiting:0,done:0,mine:0},priorityAlert:{id:77,title:'Public repository detected',body:'Repository visibility changed.',kind:'repo_publicized',findings:[],created_at:'2026-09-05T13:00:00Z',acknowledged_at:null,resolved_at:null,status:'open'}});
+ const needs=await screen.findByRole('region',{name:'Needs you'});
+ expect(within(needs).getByRole('heading',{name:/^Also waiting on you/})).toBeTruthy();
+ expect(within(needs).getByText('2 alerts need a response')).toBeTruthy();
+ fireEvent.click(within(needs).getByRole('button',{name:'Open Alerts response queue, 3 alerts need response'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
 });
