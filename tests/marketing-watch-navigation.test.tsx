@@ -74,7 +74,8 @@ it.each([false, true])('keeps every homepage scan CTA consistent for member=%s',
   expect(screen.queryByRole('link', { name: 'New scan' })).toBeNull();
   fireEvent.click(footer);
   expect(window.location.pathname).toBe(destination);
-  fireEvent.click(screen.getByRole('button', { name: 'Start a scan' }));
+  // Homepage CTAs share the nav label now that link arrows are gone, so pick the nav button explicitly.
+  fireEvent.click(screen.getAllByRole('button', { name: 'Start a scan' }).find(button => button.classList.contains('v20-nav-cta'))!);
   expect(window.location.pathname).toBe(destination);
   fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Site navigation' })).getByRole('button', { name: 'Start a scan' }));

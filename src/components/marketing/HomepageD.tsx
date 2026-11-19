@@ -7,9 +7,9 @@ const homepageMarkup = { __html: content }
 import './homepage-d.css'
 
 const examples: Record<string, string[]> = {
-  Package: ['Package inspection', 'acme-cli / dist', 'Source map contains original code', 'dist/cli.js.map', 'Package contents', 'Exclude the map, then recheck →'],
-  GitHub: ['GitHub release inspection', 'acme / checkout-web', 'Internal config in release asset', 'release.zip / config.json', 'Release asset', 'Update packaging, then recheck →'],
-  'Production URL': ['Production website inspection', 'app.acme.example', 'Public source map is reachable', '/assets/app.js.map', 'Production web', 'Remove public map, then recheck →'],
+  Package: ['Package inspection', 'acme-cli / dist', 'Source map contains original code', 'dist/cli.js.map', 'Package contents', 'Exclude the map, then recheck'],
+  GitHub: ['GitHub release inspection', 'acme / checkout-web', 'Internal config in release asset', 'release.zip / config.json', 'Release asset', 'Update packaging, then recheck'],
+  'Production URL': ['Production website inspection', 'app.acme.example', 'Public source map is reachable', '/assets/app.js.map', 'Production web', 'Remove public map, then recheck'],
 }
 
 /** Trusted, bundled presentation markup from the approved Homepage D design. */
@@ -44,6 +44,18 @@ export function HomepageD({ scanPath }: { scanPath: string }) {
     return () => observer.disconnect()
   })
   useEffect(() => {
+    const page = root.current
+    if (!page || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const sections = Array.from(page.querySelectorAll<HTMLElement>('.intro, .pipeline, .feature, .findings-section, .ship, .trust, .pricing, .faq'))
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return
+      entry.target.classList.add('in')
+      observer.unobserve(entry.target)
+    }), { rootMargin: '0px 0px -8% 0px', threshold: 0.08 })
+    sections.forEach(section => { section.classList.add('reveal'); observer.observe(section) })
+    return () => { observer.disconnect(); sections.forEach(section => section.classList.remove('reveal', 'in')) }
+  }, [])
+  useEffect(() => {
     if (!selected || !dialog.current) return
     const node = dialog.current
     const previous = document.body.style.overflow
@@ -59,6 +71,15 @@ export function HomepageD({ scanPath }: { scanPath: string }) {
       timers.add(timer)
     }
     const text = (id: string, value: string) => { const node = page.querySelector(`#${id}`); if (node) node.textContent = value }
+    const sweep = () => {
+      const rows = page.querySelector<HTMLElement>('#rows')
+      if (!rows) return
+      rows.classList.remove('scanning')
+      void rows.offsetWidth
+      rows.classList.add('scanning')
+    }
+    page.querySelector('#rows')?.addEventListener('animationend', event => (event.currentTarget as HTMLElement).classList.remove('scanning'))
+    later(sweep, 700)
     const click = (event: MouseEvent) => {
       const button = (event.target as Element).closest('button')
       if (!button || !page.contains(button)) return
@@ -94,8 +115,9 @@ export function HomepageD({ scanPath }: { scanPath: string }) {
       if (button.id === 'recheck') {
         button.disabled = true
         button.textContent = 'Rechecking…'
+        sweep()
         text('demo-status', 'Check in progress…')
-        later(() => { button.disabled = false; button.textContent = 'Recheck ↻'; text('demo-status', 'Recheck complete · 3 findings still need review') }, 1100)
+        later(() => { button.disabled = false; button.textContent = 'Recheck'; text('demo-status', 'Recheck complete · 3 findings still need review') }, 1100)
       }
       if (button.id === 'pipeline-run') {
         button.disabled = true
