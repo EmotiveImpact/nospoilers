@@ -120,7 +120,7 @@ export const MANAGE_ARTICLES: Article[] = [
           ["Current sign-in is GitHub-based. Google/Microsoft login, enterprise SSO, SCIM and custom roles are not operational commitments."],
           ["Existing-account invitations, connection placement and some archive/lifecycle controls have scope-specific restrictions."],
           ["Source types do not yet have identical scheduling, lifecycle, notification and settings controls."],
-          ["HMAC receipts require the correct issuing verification context; public summaries are not independent cryptographic verification."],
+          ["Version 2 receipts verify against the published instance keys; older version 1 HMAC receipts still need the issuing instance. Public summaries are not independent cryptographic verification."],
           ["A supported package format is not a malware verdict, full decompilation or proof that every vulnerability was checked."],
           ["Service isolation, provider reachability, restoration, load behaviour and enterprise assurance need operational evidence for the deployment being evaluated."],
           ["Deletion review is implemented separately from permanent execution. No universal backup-erasure promise follows from it."]),

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseFromEmail } from "./email.ts";
+import { composeReceiptKeyMaterial, parseReceiptKeyMaterial } from "../receipt.ts";
 
 export type AppConfig = {
   port: number;
@@ -17,6 +18,11 @@ export type AppConfig = {
   adminUserId: string;
   adminGithubLogin: string;
   sessionSecret: string;
+  /**
+   * Receipt key material as one string (see ReceiptKeyMaterial in receipt.ts): the Ed25519
+   * signing key when RECEIPT_SIGNING_KEY is set, bundled with the HMAC secret so older
+   * version 1 receipts still verify; otherwise the HMAC secret alone.
+   */
   receiptSecret: string;
   heavyConcurrency: number;
   lightConcurrency: number;
@@ -166,6 +172,18 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;
+  if (overrides.receiptSecret === undefined) {
+    const signingKey = env("RECEIPT_SIGNING_KEY");
+    if (signingKey) {
+      merged.receiptSecret = composeReceiptKeyMaterial({
+        signingKey,
+        hmacSecret: merged.receiptSecret,
+        retiredPublicKeys: env("RECEIPT_RETIRED_PUBLIC_KEYS").split(",").filter((k) => k.trim()),
+      });
+      // Fail at boot rather than minting receipts nobody can verify.
+      parseReceiptKeyMaterial(merged.receiptSecret);
+    }
+  }
   return merged;
 }
 

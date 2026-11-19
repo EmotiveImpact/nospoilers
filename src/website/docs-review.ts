@@ -111,15 +111,15 @@ export const REVIEW_ARTICLES: Article[] = [
   {
     slug: "proof", title: "Signed proof, sharing and verification", group: "Review and respond",
     description: "Keep private signed records, redacted public summaries and artefact matching clearly separate.",
-    keywords: ["receipt", "signature", "HMAC", "sharing", "public", "revoke", "revocation", "verify", "digest", "issuer"],
+    keywords: ["receipt", "signature", "Ed25519", "HMAC", "key id", "sharing", "public", "revoke", "revocation", "verify", "digest", "issuer"],
     sections: [
       s("three-things", "Three things that are easy to confuse",
         table(["Item", "What it establishes"], [
-          ["Private signed receipt JSON", "A recorded outcome, scope, digest and policy/engine provenance signed using the issuing service's HMAC model."],
+          ["Private signed receipt JSON", "A recorded outcome, scope, digest and policy/engine provenance. Version 2 receipts are Ed25519-signed and name their key id; version 1 receipts use the issuing service's HMAC key."],
           ["Public shared summary", "An explicitly published, redacted snapshot. Reading the summary is not independent signature verification."],
           ["Artefact digest comparison", "Whether selected bytes match the digest in a verified record. This does not scan those bytes again."]
         ]),
-        warning("Not a public-key certificate", "The current receipt algorithm is HMAC-SHA256. Verification depends on the issuing instance or trusted compatible signing material; do not describe it as universally independent issuer verification, a certification or a guarantee of complete security.")),
+        warning("A signature is not a certificate", "A version 2 receipt proves the bytes and verdict were signed by the key it names, and the issuing instance publishes its keys at /.well-known/nospoilers-receipt-keys.json so anyone can pin them. Pin the issuer before trusting a receipt. Version 1 receipts still depend on the issuing instance. Neither is a certification or a guarantee of complete security.")),
       s("private-and-shared", "Keep evidence private unless you deliberately share",
         p("Download the private signed record from the saved Release when available. Full reports and private evidence remain governed by workspace access. Inspect their contents before forwarding them."),
         p("Where the saved result offers proof sharing, an administrator previews and explicitly publishes an allowlisted summary. Publishing a link is separate from downloading the private record. Only use the sharing controls present for that evidence type."),
@@ -138,12 +138,12 @@ export const REVIEW_ARTICLES: Article[] = [
         table(["Code / outcome", "Interpretation"], [
           ["malformed / missing-signature", "The input is not usable signed receipt JSON."],
           ["unsupported-version", "This verifier does not support that receipt version."],
-          ["unrecognized-signature", "The signature could not be validated here. HMAC alone cannot distinguish another issuer from tampering."],
+          ["unrecognized-signature", "The signature does not match, or it was made by a key this instance does not recognise. On a version 2 receipt the response names the key id so you can check who it belongs to."],
           ["inconsistent", "The signed record contains an internally inconsistent result."],
           ["artifact-mismatch", "The verified record does not describe the selected package digest."],
           ["Unavailable public link", "A redacted sharing link cannot be read. This is not the same as a cryptographic verdict."]
         ]),
-        p("Do not share an instance signing secret to make someone else's verification work. Ask support for the correct verification path."))
+        p("Do not share an instance signing secret to make someone else's verification work. For a version 2 receipt, point them at nospoilers verify --issuer with this instance's https origin; the public keys there are safe to share."))
     ]
   }
 ];

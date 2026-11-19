@@ -3,7 +3,7 @@ import { existsSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
-import { runCliVerify } from "./cli-verify.ts";
+import { fetchIssuerKeys, runCliVerify } from "./cli-verify.ts";
 import {runGate} from './cli-gate.ts';
 import {runMcp} from './cli-mcp.ts';
 import { loadPolicyFile } from "./policy.ts";
@@ -190,19 +190,22 @@ program
   .argument("[path]", "Packed artifact to re-hash")
   .requiredOption("--receipt <file>", "Signed scan receipt JSON")
   .option("--url <https>", "HTTPS delivery URL to stream-hash. Bytes are not stored.")
-  .action(async (target: string | undefined, opts: { receipt: string; url?: string }) => {
+  .option("--issuer <https-origin>", "Pin the receipt to the Ed25519 keys this NoSpoilers instance publishes")
+  .option("--public-key <base64>", "Pin the receipt to one raw base64 Ed25519 public key (repeatable)", (value: string, previous: string[] = []) => [...previous, value], [] as string[])
+  .action(async (target: string | undefined, opts: { receipt: string; url?: string; issuer?: string; publicKey: string[] }) => {
     const secret = receiptSecretFromEnv();
-    if (!secret) {
-      process.stderr.write(
-        "Set RECEIPT_SECRET or SESSION_SECRET to verify a hosted HMAC receipt. Production signing will move to KMS.\n",
-      );
-      process.exitCode = 2;
-      return;
-    }
     try {
+      const trustedPublicKeys = [...opts.publicKey];
+      if (opts.issuer) trustedPublicKeys.push(...(await fetchIssuerKeys(opts.issuer)));
+      if (!secret && trustedPublicKeys.length === 0) {
+        process.stderr.write(
+          "No issuer pinned. Pass --issuer <https-origin> or --public-key <base64> to confirm who signed this receipt. Version 1 receipts also accept RECEIPT_SECRET.\n",
+        );
+      }
       const result = await runCliVerify({
         receiptRaw: await readFile(opts.receipt, "utf8"),
         secret,
+        trustedPublicKeys,
         filePath: target,
         url: opts.url,
       });
