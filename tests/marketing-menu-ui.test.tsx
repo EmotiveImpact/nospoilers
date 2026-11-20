@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {MarketingNav,V20Homepage} from '../src/components/marketing/V20Homepage';
 const originalShow=Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype,'showModal');
 const originalClose=Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype,'close');
-afterEach(()=>{cleanup();vi.restoreAllMocks();for(const [key,descriptor] of [['showModal',originalShow],['close',originalClose]] as const){if(descriptor)Object.defineProperty(HTMLDialogElement.prototype,key,descriptor);else Reflect.deleteProperty(HTMLDialogElement.prototype,key)}});
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();for(const [key,descriptor] of [['showModal',originalShow],['close',originalClose]] as const){if(descriptor)Object.defineProperty(HTMLDialogElement.prototype,key,descriptor);else Reflect.deleteProperty(HTMLDialogElement.prototype,key)}});
 it('opens a modal mobile menu, locks scrolling and restores it when closed',()=>{
  const show=vi.fn(function(this:HTMLDialogElement){this.open=true});
  Object.defineProperty(HTMLDialogElement.prototype,'showModal',{configurable:true,value:show});
@@ -59,23 +59,57 @@ it('switches menus and closes when focus leaves the navigation group',()=>{
  fireEvent.blur(resources,{relatedTarget:document.body});
  expect(resources.getAttribute('aria-expanded')).toBe('false');
 });
-it('ships the approved Homepage D story as the real homepage',async()=>{
+it('ships the approved homepage story as the real homepage',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
  render(<V20Homepage/>);
- expect(screen.getByRole('heading',{name:/Security does not\s*stop at Git\./})).toBeTruthy();
- expect(screen.getByRole('heading',{name:/The build has\s*the last word\./})).toBeTruthy();
- expect(screen.getByRole('heading',{name:/Shipping isn’t\s*the finish line\./})).toBeTruthy();
- expect(screen.getByRole('heading',{name:'Questions, answered.'})).toBeTruthy();
- const github=screen.getByRole('button',{name:'GitHub'});
- fireEvent.click(github);
- expect(github.getAttribute('aria-pressed')).toBe('true');
- expect(screen.getByText('release.zip / config.json')).toBeTruthy();
- expect(screen.getByText('Internal config in release asset')).toBeTruthy();
- fireEvent.click(screen.getByRole('button',{name:'Secrets',exact:true}));
- expect(document.querySelector<HTMLElement>('[data-kind="maps"]')?.hidden).toBe(true);
- expect(document.querySelector<HTMLElement>('[data-kind="secrets"]')?.hidden).toBe(false);
- fireEvent.click(screen.getByRole('button',{name:'What does a release proof verify?'}));
- expect(screen.getByRole('button',{name:'What does a release proof verify?'}).getAttribute('aria-expanded')).toBe('true');
+ for(const name of [/NoSpoilers checks what your\s*release actually ships/,/Your repository is clean\.\s*Your release might not be\./,'See what hides inside a release','Shipping is not the finish line','Ship it, then prove it','Built on clear boundaries','Questions, answered.'])expect(screen.getByRole('heading',{name})).toBeTruthy();
+ const trace=screen.getByRole('tab',{name:/Trace/});
+ fireEvent.click(trace);
+ expect(trace.getAttribute('aria-selected')).toBe('true');
+ expect(screen.getByRole('tab',{name:/Inspect/}).getAttribute('aria-selected')).toBe('false');
+ const release=screen.getByRole('button',{name:'GitHub release'});
+ fireEvent.click(release);
+ expect(release.getAttribute('aria-pressed')).toBe('true');
+ const env=screen.getByRole('button',{name:/linux-x64\/config\/\.env/});
+ fireEvent.click(env);
+ expect(env.getAttribute('aria-pressed')).toBe('true');
+ expect(document.getElementById('fev')?.textContent).toContain('2 working credentials');
+ fireEvent.click(screen.getByRole('button',{name:/Recheck after the fix/}));
+ await waitFor(()=>expect(document.getElementById('cst')?.textContent).toBe('Example · acme-cli v2.4.2 on GitHub · 0 findings · proof ready'),{timeout:4000});
+ expect(screen.getByRole('button',{name:'Reset example'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:/Recheck the CDN/}));
+ await waitFor(()=>expect(document.getElementById('trchip')?.textContent).toContain('6 of 6 clear'),{timeout:4000});
+ expect(document.getElementById('walt')?.textContent).toContain('All six connected sources are clear.');
+ fireEvent.click(screen.getByRole('button',{name:/Yearly/}));
+ expect([...document.querySelectorAll('.homepage-d .pr [data-m]')].map(el=>el.textContent)).toEqual(['$290','per year','$990','per year']);
+ expect(document.getElementById('pterm')?.textContent).toContain('nospoilers verify acme-cli-2.4.2.tgz --receipt receipt.json');
+ expect(document.getElementById('pterm')?.textContent).toContain('Artifact SHA-256 matches a passing receipt.');
+ expect(document.querySelectorAll('.homepage-d details[name="faq"]')).toHaveLength(6);
+ expect(screen.getByText('What is the difference between a scan and coverage?')).toBeTruthy();
+});
+it('shows only examples of sources NoSpoilers can check, and says they are examples',()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ render(<V20Homepage/>);
+ const page=document.querySelector('.homepage-d')!;
+ const shown=`${page.textContent} ${[...page.querySelectorAll('[aria-label]')].map(el=>el.getAttribute('aria-label')).join(' ')}`;
+ for(const mirror of [/jsdelivr/i,/unpkg/i,/esm\.sh/i])expect(shown).not.toMatch(mirror);
+ expect(document.getElementById('stage')?.getAttribute('aria-label')).toContain('Example data');
+ expect(document.getElementById('cst')?.textContent).toMatch(/^Example · /);
+ expect(page.querySelector('#trg .fl')?.textContent).toMatch(/^Example · /);
+ expect(page.querySelector('.bnd-note')?.textContent).toBe('Example sequence · no scan is running');
+ expect(page.querySelector('img')).toBeNull();
+});
+it('keeps the homepage still for visitors who ask for reduced motion, and tidies up when it leaves',()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ vi.stubGlobal('matchMedia',(query:string)=>({matches:query.includes('reduce'),media:query,addEventListener(){},removeEventListener(){}}));
+ const {unmount}=render(<V20Homepage/>);
+ expect(document.getElementById('steps')?.classList.contains('still')).toBe(true);
+ expect(document.querySelector('.homepage-d animateMotion')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:/Recheck after the fix/}));
+ expect(document.getElementById('cst')?.textContent).toBe('Example · acme-cli v2.4.2 · 0 findings · proof ready');
+ fireEvent.click(screen.getByRole('button',{name:/Follow a release/}));
+ expect(document.getElementById('bndstate')?.textContent).toContain('6 / 6');
+ unmount();
 });
 it('sends Log in to the Watch sign-in screen even when GitHub sign-in is configured',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:true})}));

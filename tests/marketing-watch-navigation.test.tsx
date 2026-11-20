@@ -74,7 +74,7 @@ it.each([false, true])('keeps every homepage scan CTA consistent for member=%s',
   expect(screen.queryByRole('link', { name: 'New scan' })).toBeNull();
   fireEvent.click(footer);
   expect(window.location.pathname).toBe(destination);
-  fireEvent.click(screen.getByRole('button', { name: 'Start a scan' }));
+  fireEvent.click(within(document.querySelector<HTMLElement>('header.v20-nav')!).getByRole('button', { name: 'Start a scan' })); // The page's own scan buttons share this name and are checked below.
   expect(window.location.pathname).toBe(destination);
   fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Site navigation' })).getByRole('button', { name: 'Start a scan' }));
