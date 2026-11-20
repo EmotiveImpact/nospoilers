@@ -99,6 +99,19 @@ it('shows only examples of sources NoSpoilers can check, and says they are examp
  expect(page.querySelector('.bnd-note')?.textContent).toBe('Example sequence · no scan is running');
  expect(page.querySelector('img')).toBeNull();
 });
+it('moves the hero only when the reader scrolls or picks a step, never on a timer',()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ vi.useFakeTimers({toFake:['setTimeout','clearTimeout','requestAnimationFrame','cancelAnimationFrame']});
+ try{
+  render(<V20Homepage/>);
+  vi.advanceTimersByTime(15000);
+  expect(screen.getByRole('tab',{name:/Inspect/}).getAttribute('aria-selected')).toBe('true');
+  fireEvent.click(screen.getByRole('tab',{name:/Watch/}));
+  vi.advanceTimersByTime(15000);
+  expect(screen.getByRole('tab',{name:/Watch/}).getAttribute('aria-selected')).toBe('true');
+  expect(document.querySelector('.homepage-d .lv.on')?.getAttribute('data-s')).toBe('2');
+ }finally{vi.useRealTimers()}
+});
 it('keeps the homepage still for visitors who ask for reduced motion, and tidies up when it leaves',()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
  vi.stubGlobal('matchMedia',(query:string)=>({matches:query.includes('reduce'),media:query,addEventListener(){},removeEventListener(){}}));

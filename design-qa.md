@@ -64,6 +64,14 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 ---
 
+# Homepage hero, option C, 20 November 2026
+
+After homepage 31 shipped, the owner found the top too busy (headline, a four-row list and a switching preview stacked together). Three mockups were compared; the owner chose option C and asked to keep the preview's sidebar and use the empty space on the right. The rest of the page is unchanged from homepage 31.
+
+- The hero is a headline on the left with its copy and buttons on the right, then a tall scroll story with a pinned preview. On arrival the preview is tilted as before and nothing cycles. Scrolling straightens it and pins it; above 960 CSS pixels the four steps stand on its left in the page column and the full preview fills the room up to the right edge of the window. Between 721 and 960 the steps sit as a row above the preview; phones keep the flat preview with the steps as a row.
+- Checked on the development server at 1440, 1024, 820 and 390 CSS pixels, with and without reduced motion: each step is reached by scrolling, choosing a step scrolls to it, the step stays put for more than one old seven-second cycle without scrolling, no console errors and no sideways scroll.
+- Not checked: native 200% zoom, a screen reader, Safari and Firefox.
+
 # Homepage 31 production verification, 20 November 2026
 
 The owner approved a new homepage mockup ("homepage 31") on 20 November 2026 and asked for it to be built. It replaces the homepage D presentation described in the next section, which is kept as history. The implementation still lives at `/` via `HomepageD.tsx`, bundled markup and styles scoped to `.homepage-d`; behaviour is in `homepage-d-interactions.ts`.

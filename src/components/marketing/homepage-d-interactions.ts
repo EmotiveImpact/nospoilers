@@ -2,7 +2,7 @@
  * Behaviour for the homepage. Every example on the page is canned presentation data:
  * nothing in this file uploads, scans or calls an API.
  *
- * Only the hero moves by itself. Everything below it waits for a click.
+ * Nothing cycles on a timer: the hero follows the reader's scroll, and everything below it waits for a click.
  */
 type Cleanup = () => void
 type NetState = 'x' | 'ok' | 'n' // x = still serving, ok = cleared, n = never carried it
@@ -257,49 +257,94 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
   drawWheel($<SVGElement>('#hwheel'), narrow)
   drawMatrix($('#hmx'), [['npm registry', 'fix'], ['GitHub release', 'fix'], ['cdn.acme.example', 'live'], ['app.acme.example', 'none'], ['docs.acme.example', 'none']])
 
-  const STEP_MS = 7000
-  let current = -1, elapsed = 0
+  // The hero follows the reader. Nothing cycles on a timer: scrolling raises and straightens the preview and pins it,
+  // then moves it through the four steps. A step can also be chosen directly, which scrolls to it.
+  const story = $('#story'), pin = $('#pin'), plane = $('.plane'), head = $('.hhead')
+  const header = document.querySelector<HTMLElement>('header.v20-nav')
+  let current = -1, stopScan: Cleanup | null = null
   const go = (n: number) => {
+    if (n === current) return
     current = n
-    elapsed = 0
     steps.forEach((step, i) => {
       step.classList.toggle('on', i === n)
       step.setAttribute('aria-selected', i === n ? 'true' : 'false')
-      const bar = step.querySelector<HTMLElement>('u')
-      if (bar) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '' } // restart the progress line
     })
     layers.forEach(layer => { layer.classList.toggle('on', Number(layer.dataset.s) === n); layer.classList.remove('lit') })
     navs.forEach(nav => nav.classList.toggle('on', (nav.dataset.n ?? '').split(' ').includes(String(n))))
+    stopScan?.()
     lastScan = -1
-    scan(n === 0 && !reduce && canAnimate ? 0 : 1)
+    // Inspect reads the files once each time it is shown; the other steps show their finished picture
+    if (n === 0) { scan(reduce || !canAnimate ? 1 : 0); stopScan = tween(3600, scan) } else { stopScan = null; scan(1) }
     if (n === 3) later(() => layers.forEach(layer => { if (Number(layer.dataset.s) === 3 && current === 3) layer.classList.add('lit') }), reduce ? 0 : 250)
   }
-  steps.forEach((step, i) => step.addEventListener('click', () => go(i), { signal }))
-  go(0)
-  if (reduce || !canAnimate) stepsEl.classList.add('still')
-  else {
-    stepsEl.classList.remove('still')
-    let held = false, visible = true, last = performance.now()
-    const hold = () => stepsEl.classList.toggle('hold', held || !visible)
-    stepsEl.addEventListener('pointerenter', () => { held = true; hold() }, { signal })
-    stepsEl.addEventListener('pointerleave', () => { held = false; hold() }, { signal })
-    if (canObserve) {
-      const watchStage = new IntersectionObserver(entries => { visible = entries[0].isIntersecting; hold() })
-      watchStage.observe(stage)
-      observers.push(watchStage)
-    }
-    const tick = (now: number) => {
-      const delta = Math.min(100, now - last)
-      last = now
-      if (visible && !held) {
-        elapsed += delta
-        if (current === 0) scan(Math.min(1, Math.max(0, (elapsed - 400) / 3600)))
-        if (elapsed > STEP_MS) go((current + 1) % 4)
-      }
-      frame(tick)
-    }
-    frame(tick)
+  if (reduce) stepsEl.classList.add('still')
+
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
+  const geo = { start: 1, range: 1, laidOut: false }
+  const measure = () => {
+    const top = header && /sticky|fixed/.test(getComputedStyle(header).position) ? header.offsetHeight : 0
+    page.style.setProperty('--navh', `${top}px`)
+    page.style.setProperty('--pinh', `${window.innerHeight - top}px`)
+    geo.start = Math.max(1, story.getBoundingClientRect().top + window.scrollY - top)
+    geo.range = Math.max(1, story.offsetHeight - pin.offsetHeight)
+    geo.laidOut = story.offsetHeight > 0
+    // on wide screens the steps stand in the page column, left of the preview
+    const hs = getComputedStyle(head), hr = head.getBoundingClientRect()
+    page.style.setProperty('--rl', `${hr.left + (parseFloat(hs.paddingLeft) || 0)}px`)
+    page.style.setProperty('--rw', `${clamp(pin.clientWidth * 0.19, 210, 280)}px`)
   }
+  let driving = false
+  const draw = () => {
+    const y = window.scrollY
+    const f = clamp(y / geo.start, 0, 1)                    // how far the preview has risen and straightened
+    const sp = clamp((y - geo.start) / geo.range, 0, 0.9999) // how far through the four steps, once pinned
+    const vw = document.documentElement.clientWidth
+    if (vw > 720 && (driving || y > 0)) {
+      if (!driving) { driving = true; stage.classList.add('drive') }
+      const e = reduce ? 1 : ease(f)
+      const W = pin.clientWidth, H = pin.clientHeight, k0 = Math.min(1, (W * 0.94) / 1250)
+      let left: number, top: number, k: number
+      if (vw > 960) {
+        // the whole preview, sidebar and all, fills the room between the steps and the right edge
+        left = parseFloat(page.style.getPropertyValue('--rl')) + parseFloat(page.style.getPropertyValue('--rw')) + clamp(W * 0.035, 32, 56)
+        const right = W - Math.max(24, W * 0.025)
+        k = Math.min(1, (right - left) / 1180, (H - 64) / 720)
+        top = (H - 720 * k) / 2
+      } else {
+        const above = stepsEl.offsetHeight
+        k = Math.min(1, (W * 0.92) / 1180, (H - above - 24) / 720)
+        left = (W - 1180 * k) / 2
+        top = above + 8
+      }
+      const tx = -20 * (1 - e) + (left - W * 0.04) * e, ty = 290 * k0 * (1 - e) + top * e, s = k0 + (k - k0) * e
+      const flat = e > 0.999 // once straight, a flat transform keeps the preview's text sharp
+      plane.style.transform = flat
+        ? `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${s.toFixed(4)})`
+        : `rotateX(${(36 * (1 - e)).toFixed(2)}deg) rotateZ(${(-12 * (1 - e)).toFixed(2)}deg) translate3d(${tx.toFixed(1)}px,${ty.toFixed(1)}px,0) scale(${s.toFixed(4)})`
+      stage.classList.toggle('flat', flat)
+    } else if (vw <= 720) { plane.style.transform = ''; stage.classList.remove('flat') }
+    stepsEl.classList.toggle('shown', f > 0.85)
+    const n = Math.min(3, Math.floor(sp * 4)), within = sp * 4 - n
+    go(n)
+    steps.forEach((step, i) => step.style.setProperty('--p', String(i < n ? 1 : i === n ? within.toFixed(3) : 0)))
+  }
+  let queued = false
+  const request = () => {
+    if (!canAnimate) { draw(); return }
+    if (queued) return
+    queued = true
+    frame(() => { queued = false; draw() })
+  }
+  steps.forEach((step, i) => step.addEventListener('click', () => {
+    go(i)
+    if (geo.laidOut) window.scrollTo({ top: geo.start + (i / 4 + 0.03) * geo.range, behavior: reduce ? 'auto' : 'smooth' })
+  }, { signal }))
+  window.addEventListener('scroll', request, { passive: true, signal })
+  window.addEventListener('resize', () => { measure(); request() }, { signal })
+  measure()
+  draw()
+  later(() => { measure(); draw() }, 600)
 
   // ---- release boundary: the finished picture is on the page, the button replays it ----
   const stages = $$('.bst'), boundaryState = $('#bndstate'), boundaryRun = $<HTMLButtonElement>('#bndrun')
