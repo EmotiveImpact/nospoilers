@@ -64,6 +64,16 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 ---
 
+# Homepage 31 production verification, 20 November 2026
+
+The owner approved a new homepage mockup ("homepage 31") on 20 November 2026 and asked for it to be built. It replaces the homepage D presentation described in the next section, which is kept as history. The implementation still lives at `/` via `HomepageD.tsx`, bundled markup and styles scoped to `.homepage-d`; behaviour is in `homepage-d-interactions.ts`.
+
+- Compared with the mockup in a browser at 1920, 1440, 1100, 1024, 900, 768, 390 and 360 CSS pixels: computed spacing, type and colour of every matched element, and the height of every section. At 1440 every section is the same height as the mockup except the sources strip.
+- Expected differences: the production navigation and footer replace the mockup's own; the sources strip lists the three sources the product checks, with one line each; the example story uses connected sources the product checks today (npm, a GitHub release, verified sites and a private map upload) where the mockup showed public CDN mirrors; the verify example uses the real command and output; every example is labelled as an example.
+- Corrected during the build: the app's style reset removed the browser default paragraph and list margins the mockup relied on, which pulled the hero preview 13 pixels closer to the buttons, so those defaults are restored for the homepage only; the page is clipped instead of hidden-overflow so focus or find-in-page cannot push it sideways.
+- Every control was exercised at each width on the development server and on the production bundle: the four hero steps, Follow a release, the three inspect sources, finding selection, recheck and reset, Recheck the CDN, Run verify, the billing switch, the six questions, the in-page link and the scan buttons. No console errors and no sideways scroll. With reduced motion the hero does not advance by itself.
+- Nothing on the page uploads, scans or calls an API. Not checked: native 200% zoom, a screen reader, Safari and Firefox.
+
 # Retained homepage D production verification — 8 September 2026
 
 This report superseded the earlier premature homepage pass. That implementation added sections to the old V20 body and did not reproduce the approved homepage.
