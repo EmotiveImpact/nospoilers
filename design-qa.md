@@ -66,9 +66,9 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 # Homepage follow-ups, 21 November 2026
 
-The owner asked for the headline to sit level with the copy on its right, for Start a scan to go red on hover, and for the repository link to go.
+The owner asked for Start a scan to go red on hover and for the repository link to go. After seeing the headline levelled with the copy beside it, the owner asked for a bigger explanation and for the whole hero top to be centred.
 
-- The hero head grid aligns to the top. Above 900px the headline takes a small negative top margin (5px less 0.15em) so its capitals meet the cap height of the first line of copy; measured within 2px at 1600, 1440, 1280, 1180, 1024, 960 and 901 CSS pixels. Stacked layouts at 820 and 390 are unchanged.
+- The hero head is one centred stack: headline up to 72px on two balanced lines (max 14em), explanation at 17px to 20px (max 34em), buttons and the trial line centred. Hero top padding is now 72px to 104px so the preview still shows below the buttons on a 900px tall window. The scroll story below is unchanged. Checked at 1440, 1180, 820 and 390 CSS pixels.
 - White Start buttons (navigation, hero, Team trial, close) hover to #e0203a with white text and border. The accent red (#ff2d47) gives white text only 3.7:1, so the hover uses a deeper red at 4.7:1.
 - Removed the GitHub link from the shared footer and from three old mockup footers in `public/mockup-review`. The GitHub Action docs still show `uses: EmotiveImpact/nospoilers@…` because that is how the Action is referenced.
 - The scroll story still reaches all four steps at 1440 and 390 with no page errors.

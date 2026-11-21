@@ -5,7 +5,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
-- Homepage follow-ups from the owner (21 November 2026): the headline now lines up with the top of the copy beside it, the white Start buttons (navigation, hero, Team trial, close) turn red on hover, and the GitHub repository link is gone from the site footer and from the old mockup pages under `/mockup-review`.
+- Homepage follow-ups from the owner (21 November 2026): the hero top is now one centred stack (headline, a larger explanation, buttons), the white Start buttons (navigation, hero, Team trial, close) turn red on hover, and the GitHub repository link is gone from the site footer and from the old mockup pages under `/mockup-review`.
 
 - Reworked the homepage hero after the owner found the top too busy (20 November 2026, option C of three mockups). The headline sits left with its copy and buttons on the right, and nothing cycles on a timer any more. Scrolling raises and straightens the preview and pins it; on wide screens the four steps (Inspect, Trace, Watch, Prove) stand on its left and scrolling moves the full preview, sidebar included, through them. Choosing a step scrolls to it. Narrower screens and phones show the steps as one row above the preview. Visitors who ask for reduced motion see the preview straight, without the file-scan animation.
 
