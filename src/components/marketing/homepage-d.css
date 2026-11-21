@@ -28,6 +28,8 @@
 .homepage-d .btn.lt{background:var(--t1);color:#0a0a0b;border-color:var(--t1)}
 .homepage-d .btn.lt:hover{background:#fff}
 .homepage-d .btn.lt.start:hover{background:#e0203a;border-color:#e0203a;color:#fff}
+.homepage-d .btn.red{background:#e0203a;border-color:#e0203a;color:#fff}
+.homepage-d .btn.red:hover{background:#c81b31;border-color:#c81b31}
 .homepage-d .btn.lg{height:42px;padding:0 18px;font-size:14.5px;border-radius:10px}
 .homepage-d .btn.gh{background:transparent;border-color:transparent;color:var(--t2)}
 .homepage-d .btn.gh:hover{color:var(--t1);background:transparent}
@@ -265,28 +267,22 @@
 .homepage-d .stage.drive .plane{transition:none}
 .homepage-d .stage.flat{perspective:none}
 .homepage-d .stage.flat .plane{transform-style:flat}
-.homepage-d .steps{position:absolute;z-index:3;left:var(--rl,24px);top:50%;width:var(--rw,260px);display:grid;gap:4px;transform:translate(-10px,-50%);opacity:0;pointer-events:none;transition:opacity .5s,transform .5s}
-.homepage-d .steps.shown,.homepage-d:not(.hd-js) .steps{opacity:1;transform:translate(0,-50%);pointer-events:auto}
-.homepage-d .step{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:grid;grid-template-columns:26px minmax(0,1fr);row-gap:4px;width:100%;padding:15px 0 15px 22px}
-.homepage-d .step em{font:500 11px var(--mono);font-style:normal;color:var(--t4);align-self:baseline;transition:color .25s}
-.homepage-d .step b{font-size:15.5px;font-weight:510;letter-spacing:-.01em;color:var(--t2);transition:color .25s}
-.homepage-d .step span{grid-column:2;font-size:13.5px;line-height:1.45;color:var(--t3);transition:color .25s}
-.homepage-d .step i{position:absolute;left:0;top:8px;bottom:8px;width:1px;background:var(--b1);overflow:hidden}
-.homepage-d .step i u{position:absolute;inset:0;transform-origin:50% 0;transform:scaleY(var(--p,0));background:var(--t1)}
+/* the four steps: one centred row above the preview, each line filling as the reader scrolls through its step */
+.homepage-d .pin{display:flex;flex-direction:column;align-items:center}
+.homepage-d .steps{position:relative;z-index:3;box-sizing:border-box;width:var(--rw,min(1100px,calc(100% - 48px)));max-width:calc(100% - 48px);margin-top:var(--padt,0px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 clamp(16px,2.4vw,32px);padding-top:clamp(12px,2.4vh,24px);transform:translateY(8px);opacity:0;pointer-events:none;transition:opacity .5s,transform .5s}
+.homepage-d .steps.shown,.homepage-d:not(.hd-js) .steps{opacity:1;transform:none;pointer-events:auto}
+.homepage-d .step{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;align-items:baseline;column-gap:8px;row-gap:6px;text-align:center;padding:16px 4px 14px}
+.homepage-d .step em{font:500 11px var(--mono);font-style:normal;color:var(--t4);transition:color .25s}
+.homepage-d .step b{font-size:16.5px;font-weight:510;letter-spacing:-.01em;color:var(--t2);transition:color .25s}
+.homepage-d .step span{flex-basis:100%;font-size:14.5px;line-height:1.45;color:var(--t3);text-wrap:balance;transition:color .25s}
+.homepage-d .step i{position:absolute;left:0;right:0;top:0;height:1px;background:var(--b1);overflow:hidden}
+.homepage-d .step i u{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(var(--p,0));background:var(--t1)}
 .homepage-d .step:hover b,.homepage-d .step.on b{color:var(--t1)}
 .homepage-d .step.on em{color:var(--red)}
 .homepage-d .step.on span{color:var(--t2)}
 .homepage-d .step:focus-visible{outline:2px solid var(--red);outline-offset:4px}
-@media (max-width:960px){
-  /* narrower screens: the steps become one row above the preview */
-  .homepage-d .pin{display:flex;flex-direction:column}
-  .homepage-d .steps{position:relative;left:auto;top:auto;width:auto;transform:translateY(6px);grid-template-columns:repeat(4,minmax(0,1fr));gap:0 14px;padding:12px max(24px,env(safe-area-inset-left,0px)) 0}
-  .homepage-d .steps.shown,.homepage-d:not(.hd-js) .steps{transform:none}
-  .homepage-d .step{grid-template-columns:auto minmax(0,1fr);column-gap:8px;padding:10px 0 12px}
-  .homepage-d .step span{display:none}
-  .homepage-d .step i{top:auto;bottom:0;left:0;right:0;width:auto;height:1px}
-  .homepage-d .step i u{transform-origin:0 50%;transform:scaleX(var(--p,0))}
-}
+/* narrower screens keep the step names only */
+@media (max-width:960px){.homepage-d .step{padding:12px 0}.homepage-d .step span{display:none}}
 
 /* hero app, borderless like the product */
 .homepage-d .app{border:0;background:#0b0c0d;box-shadow:0 0 0 1px rgba(255,255,255,.05),0 80px 160px -40px rgba(0,0,0,.9)}
@@ -476,8 +472,9 @@
   .homepage-d .flist2{min-height:0}
 }
 @media (max-width:720px){
-  .homepage-d .steps{gap:0 10px;padding:12px 16px 0}
-  .homepage-d .step{padding:9px 0 11px;grid-template-columns:1fr}
+  .homepage-d .pin{align-items:stretch}
+  .homepage-d .steps{width:auto;max-width:none;margin-top:0;gap:0 10px;padding:12px 16px 0}
+  .homepage-d .step{padding:11px 0 9px;flex-direction:column;flex-wrap:nowrap;align-items:center;row-gap:3px}
   .homepage-d .step b{font-size:13.5px}
   .homepage-d .pin .stage{position:relative;inset:auto;flex:none}
   /* the hero app sits flat on a phone so it stays readable */

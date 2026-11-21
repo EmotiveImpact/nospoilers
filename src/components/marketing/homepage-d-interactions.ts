@@ -259,7 +259,7 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
 
   // The hero follows the reader. Nothing cycles on a timer: scrolling raises and straightens the preview and pins it,
   // then moves it through the four steps. A step can also be chosen directly, which scrolls to it.
-  const story = $('#story'), pin = $('#pin'), plane = $('.plane'), head = $('.hhead')
+  const story = $('#story'), pin = $('#pin'), plane = $('.plane')
   const header = document.querySelector<HTMLElement>('header.v20-nav')
   let current = -1, stopScan: Cleanup | null = null
   const go = (n: number) => {
@@ -281,7 +281,7 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
 
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
   const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
-  const geo = { start: 1, range: 1, laidOut: false }
+  const geo = { start: 1, range: 1, laidOut: false, k: 1, left: 0, top: 0 }
   const measure = () => {
     const top = header && /sticky|fixed/.test(getComputedStyle(header).position) ? header.offsetHeight : 0
     page.style.setProperty('--navh', `${top}px`)
@@ -289,10 +289,20 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
     geo.start = Math.max(1, story.getBoundingClientRect().top + window.scrollY - top)
     geo.range = Math.max(1, story.offsetHeight - pin.offsetHeight)
     geo.laidOut = story.offsetHeight > 0
-    // on wide screens the steps stand in the page column, left of the preview
-    const hs = getComputedStyle(head), hr = head.getBoundingClientRect()
-    page.style.setProperty('--rl', `${hr.left + (parseFloat(hs.paddingLeft) || 0)}px`)
-    page.style.setProperty('--rw', `${clamp(pin.clientWidth * 0.19, 210, 280)}px`)
+    // the steps run in one centred row as wide as the preview, and the two sit centred in the pinned window
+    if (document.documentElement.clientWidth > 720) {
+      const W = pin.clientWidth, H = pin.clientHeight, gap = clamp(H * 0.025, 12, 24)
+      const fit = () => Math.min(1, (W * 0.92) / 1180, (H - stepsEl.offsetHeight - gap * 2) / 720)
+      page.style.setProperty('--padt', '0px')
+      page.style.setProperty('--rw', `${Math.round(1180 * fit())}px`)
+      const k = fit(), above = stepsEl.offsetHeight
+      const padt = Math.max(0, (H - above - gap * 2 - 720 * k) / 2)
+      page.style.setProperty('--padt', `${padt.toFixed(1)}px`)
+      Object.assign(geo, { k, left: (W - 1180 * k) / 2, top: padt + above + gap })
+    } else {
+      page.style.removeProperty('--rw')
+      page.style.removeProperty('--padt')
+    }
   }
   let driving = false
   const draw = () => {
@@ -303,20 +313,9 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
     if (vw > 720 && (driving || y > 0)) {
       if (!driving) { driving = true; stage.classList.add('drive') }
       const e = reduce ? 1 : ease(f)
-      const W = pin.clientWidth, H = pin.clientHeight, k0 = Math.min(1, (W * 0.94) / 1250)
-      let left: number, top: number, k: number
-      if (vw > 960) {
-        // the whole preview, sidebar and all, fills the room between the steps and the right edge
-        left = parseFloat(page.style.getPropertyValue('--rl')) + parseFloat(page.style.getPropertyValue('--rw')) + clamp(W * 0.035, 32, 56)
-        const right = W - Math.max(24, W * 0.025)
-        k = Math.min(1, (right - left) / 1180, (H - 64) / 720)
-        top = (H - 720 * k) / 2
-      } else {
-        const above = stepsEl.offsetHeight
-        k = Math.min(1, (W * 0.92) / 1180, (H - above - 24) / 720)
-        left = (W - 1180 * k) / 2
-        top = above + 8
-      }
+      const W = pin.clientWidth, k0 = Math.min(1, (W * 0.94) / 1250)
+      // the whole preview, sidebar and all, settles centred under the row of steps
+      const { k, left, top } = geo
       const tx = -20 * (1 - e) + (left - W * 0.04) * e, ty = 290 * k0 * (1 - e) + top * e, s = k0 + (k - k0) * e
       const flat = e > 0.999 // once straight, a flat transform keeps the preview's text sharp
       plane.style.transform = flat

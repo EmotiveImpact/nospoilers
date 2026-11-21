@@ -68,8 +68,10 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 The owner asked for Start a scan to go red on hover and for the repository link to go. After seeing the headline levelled with the copy beside it, the owner asked for a bigger explanation and for the whole hero top to be centred.
 
-- The hero head is one centred stack: headline up to 72px on two balanced lines (max 14em), explanation at 17px to 20px (max 34em), buttons and the trial line centred. Hero top padding is now 72px to 104px so the preview still shows below the buttons on a 900px tall window. The scroll story below is unchanged. Checked at 1440, 1180, 820 and 390 CSS pixels.
-- White Start buttons (navigation, hero, Team trial, close) hover to #e0203a with white text and border. The accent red (#ff2d47) gives white text only 3.7:1, so the hover uses a deeper red at 4.7:1.
+- The hero head is one centred stack: headline up to 72px on two balanced lines (max 14em), explanation at 17px to 20px (max 34em), buttons and the trial line centred. Hero top padding is now 72px to 104px so the preview still shows below the buttons on a 900px tall window. Checked at 1440, 1180, 820 and 390 CSS pixels.
+- The owner then found the steps beside the pinned preview too much at the side. The steps are now one centred row above the preview at every width, as wide as the preview, with the preview centred under it; the pair is centred vertically in the pinned window when there is room. Above 960px each step shows its explanation at 14.5px (was 13.5px); narrower screens show names only. Each step's line sits on top and fills left to right. Checked by scrolling at 1920x1080, 1440x900, 1024x768, 820x1000 and 390x844: all four steps reached, choosing Prove scrolls to it, the step holds without scrolling, no page errors, no sideways scroll.
+- Start a scan (navigation, hero, close) is red at rest (#e0203a) and a deeper red on hover (#c81b31); white text measures 4.7:1 and above.
+- The white Team trial button hovers to #e0203a with white text and border. The accent red (#ff2d47) gives white text only 3.7:1, so buttons use a deeper red at 4.7:1.
 - Removed the GitHub link from the shared footer and from three old mockup footers in `public/mockup-review`. The GitHub Action docs still show `uses: EmotiveImpact/nospoilers@…` because that is how the Action is referenced.
 - The scroll story still reaches all four steps at 1440 and 390 with no page errors.
 
