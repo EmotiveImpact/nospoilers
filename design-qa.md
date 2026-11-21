@@ -64,6 +64,15 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 ---
 
+# Homepage follow-ups, 21 November 2026
+
+The owner asked for the headline to sit level with the copy on its right, for Start a scan to go red on hover, and for the repository link to go.
+
+- The hero head grid aligns to the top. Above 900px the headline takes a small negative top margin (5px less 0.15em) so its capitals meet the cap height of the first line of copy; measured within 2px at 1600, 1440, 1280, 1180, 1024, 960 and 901 CSS pixels. Stacked layouts at 820 and 390 are unchanged.
+- White Start buttons (navigation, hero, Team trial, close) hover to #e0203a with white text and border. The accent red (#ff2d47) gives white text only 3.7:1, so the hover uses a deeper red at 4.7:1.
+- Removed the GitHub link from the shared footer and from three old mockup footers in `public/mockup-review`. The GitHub Action docs still show `uses: EmotiveImpact/nospoilers@…` because that is how the Action is referenced.
+- The scroll story still reaches all four steps at 1440 and 390 with no page errors.
+
 # Homepage hero, option C, 20 November 2026
 
 After homepage 31 shipped, the owner found the top too busy (headline, a four-row list and a switching preview stacked together). Three mockups were compared; the owner chose option C and asked to keep the preview's sidebar and use the empty space on the right. The rest of the page is unchanged from homepage 31.

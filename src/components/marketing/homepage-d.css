@@ -23,10 +23,11 @@
 .homepage-d a:hover .ar,.homepage-d button:hover .ar{transform:translateX(3px)}
 
 /* nav */
-.homepage-d .btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:510;border:1px solid transparent;background:var(--s2);transition:background .2s,border-color .2s;white-space:nowrap}
+.homepage-d .btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;font-size:13.5px;font-weight:510;border:1px solid transparent;background:var(--s2);transition:background .2s,border-color .2s,color .2s;white-space:nowrap}
 .homepage-d .btn:hover{background:var(--s3)}
 .homepage-d .btn.lt{background:var(--t1);color:#0a0a0b;border-color:var(--t1)}
 .homepage-d .btn.lt:hover{background:#fff}
+.homepage-d .btn.lt.start:hover{background:#e0203a;border-color:#e0203a;color:#fff}
 .homepage-d .btn.lg{height:42px;padding:0 18px;font-size:14.5px;border-radius:10px}
 .homepage-d .btn.gh{background:transparent;border-color:transparent;color:var(--t2)}
 .homepage-d .btn.gh:hover{color:var(--t1);background:transparent}
@@ -254,8 +255,10 @@
 /* hero: copy on the left, the four steps of one release on the right */
 /* hero: the headline sits left with its copy on the right. Nothing moves on arrival. Scrolling raises and straightens
    the preview and pins it; on wide screens the four steps then stand on its left and scrolling moves the preview through them. */
-.homepage-d .hhead{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);column-gap:clamp(40px,6vw,96px);align-items:end}
+.homepage-d .hhead{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);column-gap:clamp(40px,6vw,96px);align-items:start}
 .homepage-d .hhead .h1{font-size:clamp(40px,4.9vw,68px);max-width:15ch}
+/* side by side, the headline's capitals line up with the first line of the copy on the right */
+@media (min-width:901px){.homepage-d .hhead .h1{margin-top:calc(5px - .15em)}}
 .homepage-d .hside .lead{margin:0 0 28px;font-size:clamp(16px,1.25vw,17px);text-wrap:pretty}
 .homepage-d .story{position:relative;height:calc(var(--pinh,100vh) + 240vh);margin-top:clamp(36px,5vw,64px)}
 .homepage-d .pin{position:sticky;top:var(--navh,72px);height:var(--pinh,calc(100vh - 72px));overflow:hidden}
