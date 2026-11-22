@@ -15,7 +15,7 @@ import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
 import type { AlertTab } from "@/watch/routes.ts";
 import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
-import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Download, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 
@@ -211,19 +211,13 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="watch-page-status"><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</p></div>
-        {!previewing || onAssignedToMe ? (
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts</h1><p className="watch-page-status"><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</p></div>
+        {!previewing ? (
           <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
-            {!previewing ? (
-              <Button type="button" size="sm" variant="outline" onClick={onExport}>
-                {exportLabel}
-              </Button>
-            ) : null}
-            {onAssignedToMe ? (
-              <Button type="button" size="sm" variant="outline" className="aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>
-                Assigned to me
-              </Button>
-            ) : null}
+            <Button type="button" size="sm" variant="outline" onClick={onExport}>
+              <Download className="size-3.5" aria-hidden />
+              {exportLabel}
+            </Button>
           </div>
         ) : null}
       </div>
@@ -266,6 +260,11 @@ export function WatchAlertsWorkspace({
           </button>
         ))}
       </div></div>
+      {onAssignedToMe ? (
+        <button type="button" className="watch-filter-chip" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>
+          Assigned to me
+        </button>
+      ) : null}
       </div>
       <div key={tab} className={cn("alerts-journey-inbox watch-content-enter grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
         <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
@@ -369,6 +368,9 @@ export function WatchAlertsWorkspace({
                   <ArrowLeft className="size-4" aria-hidden />
                   Back to inbox
                 </Button>
+                <span className={cn("alerts-journey-context mr-auto", selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.operational || selectedRow.severity !== "critical" ? "watch-pill watch-pill-warn" : "watch-pill watch-pill-crit")}>
+                  {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : selectedIsEvent?"Event to review":"Finding needs review"}
+                </span>
                 {!selected.acknowledged_at && !selected.resolved_at ? (
                   <Button type="button" size="sm" className="min-h-12 lg:min-h-8" disabled={responseDisabled} onClick={() => onAction("acknowledge")}>
                     Acknowledge
@@ -386,19 +388,14 @@ export function WatchAlertsWorkspace({
                     {selected.assigned_to_login ? `@${selected.assigned_to_login}` : "Assign"}
                   </Button>
                 ) : null}
-                <div className="ml-auto flex gap-1">
+                <div className="flex gap-1">
                   <Tooltip label="Previous alert" shortcut="K"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button></Tooltip>
                   <Tooltip label="Next alert" shortcut="J"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button></Tooltip>
                 </div>
               </div>
               <div className="alerts-journey-detail-scroll min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
                 <div className="alerts-journey-detail-content mx-auto max-w-3xl">
-                  <div className="alerts-journey-context flex flex-wrap gap-2">
-                    <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.operational || selectedRow.severity !== "critical" ? "watch-pill watch-pill-warn" : "watch-pill watch-pill-crit"}>
-                      {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : selectedIsEvent?"Event to review":"Finding needs review"}
-                    </span>
-                  </div>
-                  <h1 className="alerts-detail-title mt-3 font-display text-snow [overflow-wrap:anywhere]">{selected.title}</h1>
+                  <h1 className="alerts-detail-title font-display text-snow [overflow-wrap:anywhere]">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
                   <AlertProgress alert={selected}/>
 
@@ -417,7 +414,7 @@ export function WatchAlertsWorkspace({
                         ))
                       ) : (
                         <>
-                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
+                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational ? "Repository not recorded" : (Object.hasOwn(kindExplanations,selected.kind)?kindExplanations[selected.kind].title:selected.kind))}</div>
                           {selectedRow.operational ? (
                             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-dim">
                               <span>Technical check</span>

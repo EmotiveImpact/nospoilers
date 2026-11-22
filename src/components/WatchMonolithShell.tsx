@@ -13,7 +13,7 @@ import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
-import type { Coverage } from "@/coverage.ts";
+import { TRIAL_DAYS, type Coverage } from "@/coverage.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Menu as AccountMenu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import {
   Activity,
@@ -34,6 +34,7 @@ import {
   PackageSearch,
   PanelLeft,
   PanelLeftClose,
+  Plus,
   X,
   Scale,
   Search,
@@ -120,12 +121,15 @@ function NavLink({
   active,
   collapsed,
   children,
+  badge,
   onNavigate,
 }: {
   href: string;
   active: boolean;
   collapsed?: boolean;
   children: ReactNode;
+  /** A count beside the label; on the collapsed rail it shrinks to a dot on the icon. */
+  badge?: ReactNode;
   onNavigate?: () => void;
 }) {
   const path = href.split("?")[0] ?? href;
@@ -138,14 +142,16 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "watch-rail-link flex items-center rounded-[5px] border-0 text-[13px] leading-[1.5]",
+        "watch-rail-link relative flex items-center rounded-[5px] border-0 text-[13px] leading-[1.5]",
         collapsed ? "justify-center px-1 py-[10px]" : "gap-3 px-3 py-[10px]",
         active ? "text-snow" : "text-mute hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
+      title={collapsed && typeof children === "string" ? children : undefined}
     >
       <Icon className={cn("size-[19px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
-      <span className={cn(collapsed ? "sr-only" : "flex min-w-0 flex-1 items-center")}>{children}</span>
+      <span className={cn(collapsed ? "sr-only" : "min-w-0 flex-1 truncate")}>{children}</span>
+      {badge ? <span className="watch-rail-badge">{badge}</span> : null}
     </a>
   );
 }
@@ -257,6 +263,22 @@ export function WatchMonolithShell({
       return next;
     });
   };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "[" || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="combobox"]')) return;
+      if (typeof window.matchMedia === "function" && !window.matchMedia("(min-width: 1024px)").matches) return;
+      event.preventDefault();
+      setCollapsed((current) => {
+        const next = !current;
+        writeSidebarCollapsed(next);
+        return next;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const shortcutLabel =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
       ? "⌘K"
@@ -273,48 +295,40 @@ export function WatchMonolithShell({
     ...(!artifactOnly&&adminOnly?[{view:'registries' as const,label:'Private registries'}]:[]),
   ];
   const billingHref = watchBillingHref(search);
+  // While a trial runs (or has ended) the plan link becomes a small card with the days left.
+  const trialCard = Boolean(coverage && coverage.status !== "active");
 
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("watch-rail-head", opts.collapsed ? "px-1.5" : "px-3")}>
-        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
-          {opts.collapsed && opts.showToggle ? (
-            <button
-              type="button"
-              className="group relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
-              aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-expanded={!opts.collapsed}
-              onClick={toggleCollapsed}
-            >
-              <img
-                src="/assets/brand/nospoilers-mark-white.png"
-                alt=""
-                className="size-7 object-contain transition-opacity group-hover/rail:opacity-0 group-focus-visible:opacity-0 motion-reduce:transition-none"
-              />
-              <PanelLeft className="absolute size-4 opacity-0 transition-opacity group-hover/rail:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" aria-hidden />
-            </button>
-          ) : (
-            <a
-              href={hrefFor("overview")}
-              onClick={(event) => { go(event, hrefFor("overview")); closeNav(); }}
-              className="flex min-w-0 flex-1 items-center text-snow hover:text-snow"
-            >
+        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "flex-col justify-center" : "justify-between")}>
+          <a
+            href={hrefFor("overview")}
+            onClick={(event) => { go(event, hrefFor("overview")); closeNav(); }}
+            className={cn("flex min-w-0 items-center text-snow hover:text-snow", opts.collapsed ? "justify-center" : "flex-1")}
+            aria-label={opts.collapsed ? "NoSpoilers overview" : undefined}
+          >
+            {opts.collapsed ? (
+              <img src="/assets/brand/nospoilers-mark-white.png" alt="" className="size-7 object-contain" />
+            ) : (
               <img
                 src="/assets/brand/nospoilers-wordmark.png"
                 alt="NoSpoilers"
                 className="watch-rail-wordmark block h-[38px] w-auto max-w-[152px] object-contain"
               />
-            </a>
-          )}
-          {opts.showToggle && !opts.collapsed ? (
+            )}
+          </a>
+          {opts.showToggle ? (
             <button
               type="button"
-              className="-mr-2 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-snow focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
+              className="watch-rail-collapse inline-flex size-7 shrink-0 items-center justify-center rounded-[7px]"
               aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!opts.collapsed}
+              aria-keyshortcuts="["
+              title={opts.collapsed ? "Expand sidebar  [" : "Collapse sidebar  ["}
               onClick={toggleCollapsed}
             >
-              <PanelLeftClose className="size-4" aria-hidden />
+              {opts.collapsed ? <PanelLeft className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
             </button>
           ) : null}
           {!opts.showToggle?<button type="button" className="watch-rail-close" aria-label="Close watch navigation" onClick={closeNav}><X size={20} aria-hidden/></button>:null}
@@ -364,26 +378,24 @@ export function WatchMonolithShell({
             active={route.view === "alerts"}
             collapsed={opts.collapsed}
             onNavigate={closeNav}
+            badge={workspaceId?<WorkspaceAlertBadge workspaceId={workspaceId}/>:openAlertCount > 0 ? (
+              <span className="watch-rail-count is-hot">{openAlertCount}</span>
+            ) : null}
           >
             Alerts
-            {workspaceId?<WorkspaceAlertBadge workspaceId={workspaceId}/>:openAlertCount > 0 ? (
-              <span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{openAlertCount}</span>
-            ) : null}
           </NavLink>}
         </div>
 
-        <div className={cn("flex flex-col gap-0", !opts.collapsed && "border-t border-line pt-[17px]")}>
+        <div className="flex flex-col gap-0">
           {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Evidence</p>}
           {<NavLink
             href={hrefFor("sources")}
             active={route.view === "sources"}
             collapsed={opts.collapsed}
             onNavigate={closeNav}
+            badge={!opts.collapsed && sourceCount > 0 ? <span className="watch-rail-count">{sourceCount}</span> : null}
           >
             Coverage
-            {sourceCount > 0 ? (
-              <span className="ml-auto font-mono text-[11px] text-dim">{sourceCount}</span>
-            ) : null}
           </NavLink>}
           {(
             <NavLink
@@ -409,16 +421,17 @@ export function WatchMonolithShell({
         </div>
 
         <div className="flex flex-col gap-0">
-          <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('watch-rail-link flex items-center rounded-[5px] py-[10px] text-[13px]',opts.collapsed?'justify-center':'gap-3 px-3',settingsActive?'text-snow':'text-mute hover:text-snow')} aria-current={settingsActive?'page':undefined}>
+          <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('watch-rail-link flex items-center rounded-[5px] py-[10px] text-[13px]',opts.collapsed?'justify-center':'gap-3 px-3',settingsActive?'text-snow':'text-mute hover:text-snow')} aria-current={settingsActive?'page':undefined} title={opts.collapsed?'Settings':undefined}>
             <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
           </a>
         </div>
       {opts.collapsed ? null : <RailWatchList workspaceId={workspaceId} search={search} onNavigate={closeNav} />}
       </nav>
 
-      <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>
-        <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
-        <a href="/docs" onClick={event=>{go(event,'/docs');closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
+      <div className={cn("watch-rail-foot py-3",opts.collapsed?"px-1.5":"px-3")}>
+        {trialCard&&!opts.collapsed?<a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('watch-rail-trial',ended&&'is-ended')} data-days-left={coverage?.daysLeft??undefined}><span className="watch-rail-trial-line"><b>{ended?'Coverage ended':'Trial'}</b>{ended||!coverage?.daysLeft?null:<span> · {coverage.daysLeft} day{coverage.daysLeft===1?'':'s'} left</span>}<em>{ended?'See plans':'Choose plan'}</em></span>{ended||!coverage?.daysLeft?null:<i aria-hidden><i style={{width:`${Math.max(6,Math.min(100,Math.round((1-coverage.daysLeft/TRIAL_DAYS)*100)))}%`}}/></i>}</a>:null}
+        {trialCard&&!opts.collapsed?null:<a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} title={opts.collapsed?'Plan & billing':undefined} className={cn('watch-rail-link flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>}
+        <a href="/docs" onClick={event=>{go(event,'/docs');closeNav();}} title={opts.collapsed?'Help & guides':undefined} className={cn('watch-rail-link flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
         <AccountMenu as="div" className="relative mt-2">
           <MenuButton aria-label={`Account menu for ${login}`} className={cn('flex w-full items-center rounded-md py-2 text-left text-[13px] text-snow hover:text-white',opts.collapsed?'justify-center':'gap-3 px-3')}>
             <span aria-hidden className="grid size-[19px] shrink-0 place-items-center rounded-full bg-white/10 text-[8px]">{login.slice(0,2).toUpperCase()}</span>
@@ -478,7 +491,7 @@ export function WatchMonolithShell({
             <Menu className="size-5" aria-hidden />
           </button>
           <div className="watch-stage-crumb flex min-w-0 flex-1 items-center gap-2 text-[12px] text-mute sm:flex-none sm:max-w-[220px]"><PageIcon className="hidden size-[17px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
-          {coverage ? <span className={cn("watch-stage-coverage hidden shrink-0 whitespace-nowrap text-[10px] sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
+          {coverage && coverage.status !== "active" ? <span className={cn("watch-stage-coverage hidden shrink-0 whitespace-nowrap text-[10px] sm:inline lg:hidden", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
           <span className="hidden flex-1 sm:block" />
           <button
             type="button"
@@ -493,7 +506,7 @@ export function WatchMonolithShell({
               {shortcutLabel}
             </span>
           </button>
-          <Button
+          {route.view === "scan" ? null : <Button
             type="button"
             size="sm"
             variant="outline"
@@ -501,9 +514,9 @@ export function WatchMonolithShell({
             aria-label="New scan"
             onClick={() => navigate(hrefFor("scan"))}
           >
-            <PackageSearch className="size-4" aria-hidden />
+            <Plus className="size-4" aria-hidden />
             <span className="hidden sm:inline">New scan</span>
-          </Button>
+          </Button>}
           {ended ? (
             <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => navigate(billingHref)}>
               See plans

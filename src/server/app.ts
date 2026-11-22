@@ -267,7 +267,11 @@ import {
   parseHoldAction,
   shippingBlockedReason,
 } from "./release-governance.ts";
+import { buildReleaseTrail } from "../watch/release-trail.ts";
 import {
+  CANONICAL_DELIVERY_ACTOR,
+  DELIVERY_RECHECK_WINDOW_DAYS,
+  deliveryRecheckSince,
   DeliveryVerifyError,
   MAX_DELIVERY_LOCATIONS_PER_INSTALL,
   MAX_DELIVERY_LOCATIONS_PER_REVISION,
@@ -5687,6 +5691,46 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({available:true,report:evidence.report,workspaceId:evidence.workspace_id,releaseId:release.id});
   });
 
+  // Where it went: this release, its recorded delivery checks and the workspace's other watched sources.
+  app.get('/api/releases/:id/trail', async c=>{
+    const user=await currentUser(c);
+    if(!user)return c.json({error:'Sign in to see where this release went.'},401);
+    const id=Number(c.req.param('id'));
+    if(!Number.isSafeInteger(id)||id<=0)return c.json({error:'Unknown release.'},404);
+    const release=await deps.store.getReleaseRevisionForUser(id,user.userId);
+    if(!release)return c.json({error:'Unknown release.'},404);
+    const now=new Date();
+    const since=deliveryRecheckSince(now);
+    const revision=(row:ReleaseRevisionRow)=>({id:row.id,coordinate:row.coordinate,status:row.receipt_status,artifactSha256:row.artifact_sha256,createdAt:row.created_at});
+    const locations=await deps.store.listDeliveryLocationsForRevisions([release.id]);
+    const [lineage,checks,websites,mapStores,alerts]=await Promise.all([
+      deps.store.listReleaseLineage(release.id),
+      deps.store.listDeliveryVerificationsSince(locations.map(location=>location.id),since),
+      deps.store.listWatchedOriginsForUser(user.userId,release.installation_id),
+      deps.store.listMapDestinationsForUser(user.userId,release.installation_id),
+      deps.store.listAlertsForRevision(release.id),
+    ]);
+    // Websites connected to the release's workspace are listed only for members who may see that workspace.
+    const home=(await deps.store.sql.query<{workspace_id:string}>('SELECT workspace_id FROM product_workspace_installations WHERE installation_id=$1',[release.installation_id])).rows[0];
+    const workspaceSites=home?await listWorkspaceOrigins(deps.store.sql,user.userId,home.workspace_id).catch(()=>[]):[];
+    const iso=(value:string|Date|null)=>value==null?null:new Date(value).toISOString();
+    c.header('Cache-Control','no-store');
+    return c.json({trail:buildReleaseTrail({
+      release:revision(release),
+      lineage:lineage.map(revision),
+      locations:locations.map(location=>({id:location.id,url:redactDeliveryUrl(location.url),host:location.host,canonical:location.created_by_login===CANONICAL_DELIVERY_ACTOR,lastStatus:location.last_status,lastSha256:location.last_sha256,lastCheckedAt:location.last_checked_at})),
+      checks:checks.map(check=>({locationId:check.location_id,status:check.status,observedSha256:check.observed_sha256,createdAt:check.created_at})),
+      websites:[
+        ...websites.map(site=>({id:site.id,host:site.host,status:site.last_scan_status,publicMap:site.last_public_map,checkedAt:site.last_checked_at,paused:Boolean(site.paused_at)})),
+        ...workspaceSites.filter(site=>site.verified_at&&!site.disconnected_at).map(site=>({id:site.id,host:site.host,status:site.last_scan_status,publicMap:false,checkedAt:iso(site.last_checked_at),paused:Boolean(site.paused_at)})),
+      ],
+      mapStores:mapStores.map(store=>({id:store.id,kind:store.kind,project:store.org_slug?`${store.org_slug}/${store.project_slug}`:store.project_slug,status:store.last_status,checkedAt:store.last_checked_at})),
+      alerts:alerts.map(alert=>({id:alert.id,title:alert.title,createdAt:alert.created_at,resolvedAt:alert.resolved_at})),
+      now,
+      recheck:{enabled:deps.config.deliveryRecheck!==false,days:DELIVERY_RECHECK_WINDOW_DAYS},
+    })});
+  });
+
   app.get("/api/releases/:id/attestations", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -5992,11 +6036,13 @@ export function createApp(deps: AppDeps): Hono {
     if (existing.length >= MAX_DELIVERY_LOCATIONS_PER_REVISION) {
       return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_REVISION} delivery URLs per release.` }, 400);
     }
+    // Only URLs still being tracked count, so an install is not shut out by its own history.
     const installCount = await deps.store.countDeliveryLocations({
       installationId: row.installation_id,
+      sinceIso: deliveryRecheckSince(),
     });
     if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) {
-      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_INSTALL} delivery URLs on this install.` }, 400);
+      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_INSTALL} delivery URLs can be tracked on this install at a time. URLs on releases older than ${DELIVERY_RECHECK_WINDOW_DAYS} days no longer count.` }, 400);
     }
     const location = await deps.store.insertDeliveryLocation({
       installationId: row.installation_id,

@@ -40,4 +40,13 @@ describe('specific evidence-based alert explanations',()=>{
   const result=explainAlert({...base,kind:'scan_latest_release'},true);
   expect(result.meaning).toContain('did not complete');expect(result.verify).toContain('Do not resolve this as a passing scan');
  });
+ it('explains a copy that still serves a blocked build without claiming who fetched it',()=>{
+  const result=explainAlert({kind:'delivery_still_exposed',title:'cdn.example.com still serves npm:app@1.0.0 after the fix',body:'',findings:[]});
+  expect(result.title).toBe('A copy still serves the blocked build');
+  expect(result.meaning).toContain('does not show who fetched them');
+  expect(result.action).toContain('purge the CDN cache');
+  expect(result.verify).toContain('how often it is read');
+  // the schedule can be switched off or have ended, so the guidance does not promise an hourly read
+  expect(`${result.meaning} ${result.verify}`).not.toMatch(/hourly|every hour/);
+ });
 });

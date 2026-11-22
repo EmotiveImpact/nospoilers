@@ -130,6 +130,8 @@ export async function handleJob(
     workerId?:string;
     webFetch?: typeof fetch;
     webLookup?: WebhookHostLookup;
+    /** False when the hourly delivery recheck is switched off. */
+    deliveryRecheck?: boolean;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
@@ -670,7 +672,10 @@ export async function handleJob(
       installationId,
       locationId,
       revisionId,
-      githubDeliveryId: deliveryId,
+      // The hourly recheck has a fresh job id every hour; its alerts key on the observed state instead.
+      githubDeliveryId: payload.reason === "poll" ? null : deliveryId,
+      scheduled: payload.reason === "poll",
+      hourlyRecheck: deps.deliveryRecheck !== false,
       maxBytes: deps.maxAssetBytes,
       fetch: deps.webFetch,
       lookup: deps.webLookup,
@@ -749,6 +754,7 @@ export function createWorker(opts: {
   receiptSecret?: string;
   webFetch?: typeof fetch;
   webLookup?: WebhookHostLookup;
+  deliveryRecheck?: boolean;
   onJob?: (job: JobRow) => Promise<void>;
   processNotification?: () => Promise<boolean>;
 }) {
@@ -792,6 +798,7 @@ export function createWorker(opts: {
           receiptSecret: opts.receiptSecret,
           webFetch: opts.webFetch,
           webLookup: opts.webLookup,
+          deliveryRecheck: opts.deliveryRecheck,
         });
       }
       await opts.store.finishJob(job.id,undefined,workerId);

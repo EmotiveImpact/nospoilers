@@ -1,7 +1,9 @@
 /** Opt-in, loopback-only Gate B browser fixture. Never imported by app/runtime. */
 import {serve} from '@hono/node-server';
 import {randomBytes,randomUUID} from 'node:crypto';
-import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {openSql,migrate} from '../src/server/sql.ts';
 import {createStore,signSession} from '../src/server/store.ts';
@@ -24,6 +26,9 @@ import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts
 import {withReleaseAssurance} from '../src/server/assurance-app.ts';
 import {handleJob} from '../src/server/worker.ts';
 import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
+import {attachCanonicalDeliveryUrl,runDeliveryVerifyJob} from '../src/server/delivery-verify.ts';
+import {createLogNotifier} from '../src/server/notifier.ts';
+import type {ScanReport} from '../src/scanner/types.ts';
 
 const port=process.argv[2]===undefined?4359:Number(process.argv[2]);
 if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use a valid unprivileged QA port.');
@@ -52,6 +57,53 @@ const clean=await scan('fixtures/clean.tgz'),dirty=await scan('fixtures/sourcema
 await publishReleaseObservation({store,installationId:9901,repoId:9911,secret,tag:'qa-v1',assets:[{name:'clean.tgz',coordinate:'github:qa/release-app@qa-v1#clean.tgz',report:clean}],alert:()=>({installationId:9901,kind:'release_scan',title:'QA repository release checked',body:'Disposable fixture evidence, not customer data.'})});
 await publishPackageObservation({store,installationId:9902,packageId:pkg.id,generation:'0',packageName:'qa-example-package',version:'1.0.0',report:dirty,sha256:dirty.artifactSha256??null,secret,channel:'stable',updateIdentity:true,alert:report=>({installationId:9902,kind:'npm_scan',title:'QA package contains exposed source',body:'Disposable fixture finding.',findings:report.findings})});
 await sql.query("UPDATE watched_packages SET last_checked_at=now()-interval '2 days' WHERE id=$1",[pkg.id]);
+// Where it went: a blocked version, its fix and the recorded hourly reads of each copy.
+// Past rows are plain inserts with an explicit time; the latest read of each copy runs the real job over a synthetic transport.
+const trail=(await store.insertWatchedPackage(9902,'qa-trail-cli'))!;
+// A package large enough to show the file map: a sample archive's own files among ordinary ones, packed and scanned for real.
+async function packedWith(source:string){
+ const dir=await mkdtemp(path.join(tmpdir(),'qa-trail-'));
+ execFileSync('tar',['-xzf',path.resolve(source),'-C',dir]);
+ for(const [folder,count] of [['assets',64],['lib',146]] as const){
+  await mkdir(path.join(dir,folder),{recursive:true});
+  for(let index=0;index<count;index+=1)await writeFile(path.join(dir,folder,`chunk-${String(index).padStart(3,'0')}.js`),`export const part${index} = ${index};\n`);
+ }
+ const packed=`${dir}.tgz`;
+ execFileSync('tar',['-czf',packed,'-C',dir,'.']);
+ return {report:await scan(packed),bytes:await readFile(packed)};
+}
+const trailCleanPack=await packedWith('fixtures/clean.tgz'),trailDirtyPack=await packedWith('fixtures/sourcemap.tgz');
+const trailClean=trailCleanPack.report,trailDirty=trailDirtyPack.report;
+async function sealedHoursAgo(version:string,report:ScanReport,hoursAgo:number){
+ const coordinate=`npm:qa-trail-cli@${version}`;
+ const signed=signReceipt(buildUnsignedReceipt(report,coordinate,{channel:'stable',sourceRevision:version,ciRunUrl:null}),secret);
+ const row=await store.insertScanReceipt({installationId:9902,packageId:trail.id,repoId:null,receipt:signed});
+ await sql.query(`INSERT INTO hosted_scan_evidence(receipt_id,installation_id,report) VALUES($1,9902,$2::jsonb) ON CONFLICT(receipt_id) DO NOTHING`,[row.id,JSON.stringify(report)]);
+ const inserted=await sql.query<{id:number}>(`INSERT INTO release_revisions(installation_id,package_id,receipt_id,channel,coordinate,artifact_sha256,artifact_sha512,artifact_bytes,media_type,source_revision,mismatch,created_at)
+  VALUES(9902,$1,$2,'stable',$3,$4,$5,$6,'application/gzip',$7,false,now()-make_interval(mins=>$8)) RETURNING id`,
+  [trail.id,row.id,coordinate,signed.artifactSha256,signed.artifactSha512??null,signed.artifactBytes??null,version,Math.round(hoursAgo*60)]);
+ return Number(inserted.rows[0].id);
+}
+await sealedHoursAgo('2.3.2',trailClean,96);await sealedHoursAgo('2.4.0',trailClean,48);
+const trailBlocked=await sealedHoursAgo('2.4.1',trailDirty,7.95);
+await sealedHoursAgo('2.4.2',trailClean,4.4);
+const trailRegistry=(await attachCanonicalDeliveryUrl(store,{installationId:9902,revisionId:trailBlocked,url:'https://registry.npmjs.org/qa-trail-cli/-/qa-trail-cli-2.4.1.tgz'}))!.id;
+const trailCdn=(await store.insertDeliveryLocation({installationId:9902,revisionId:trailBlocked,url:'https://cdn.qa-fixture.example.com/qa-trail-cli/2.4.1/cli.tgz',host:'cdn.qa-fixture.example.com',expectedMediaType:'application/gzip',createdByLogin:'QA-owner'})).id;
+const trailDownloads=(await store.insertDeliveryLocation({installationId:9902,revisionId:trailBlocked,url:'https://downloads.qa-fixture.example.com/cli/latest.tgz',host:'downloads.qa-fixture.example.com',expectedMediaType:'application/gzip',createdByLogin:'QA-owner'})).id;
+for(let hour=7;hour>=1;hour-=1){
+ const read=async(locationId:number,status:string,sha:string|null,host:string)=>sql.query(`INSERT INTO release_delivery_verifications(installation_id,location_id,revision_id,status,observed_sha256,observed_media_type,final_host,redirect_count,created_at)
+  VALUES(9902,$1,$2,$3,$4,$5,$6,0,date_trunc('hour',now())-make_interval(hours=>$7)+interval '5 minutes')`,[locationId,trailBlocked,status,sha,sha?'application/gzip':null,host,hour]);
+ await read(trailCdn,'matched',trailDirty.artifactSha256??null,'cdn.qa-fixture.example.com');
+ await read(trailRegistry,hour>=5?'matched':'missing',hour>=5?trailDirty.artifactSha256??null:null,'registry.npmjs.org');
+ await read(trailDownloads,hour>=5?'matched':'mismatch',(hour>=5?trailDirty.artifactSha256:trailClean.artifactSha256)??null,'downloads.qa-fixture.example.com');
+}
+{
+ const dirtyBytes=trailDirtyPack.bytes,cleanBytes=trailCleanPack.bytes;
+ const served=(body:Buffer|null)=>(async()=>new Response(body,{status:body?200:404,headers:{'content-type':'application/gzip'}})) as unknown as typeof fetch;
+ const lookup=async()=>[{address:'93.184.216.34',family:4}];
+ for(const [locationId,body] of [[trailCdn,dirtyBytes],[trailRegistry,null],[trailDownloads,cleanBytes]] as const)
+  await runDeliveryVerifyJob({store,notifier:createLogNotifier(store),installationId:9902,locationId,revisionId:trailBlocked,scheduled:true,hourlyRecheck:loadConfig().deliveryRecheck,fetch:served(body),lookup});
+}
 const website=await createWorkspaceOrigin(sql,'qa-owner',workspace.id,'https://qa-fixture.example.com');
 await sql.query("UPDATE watched_origins SET verified_at=now(),last_checked_at=now(),last_scan_status='failed-policy' WHERE id=$1",[website.id]);
 const upload=randomUUID(),receipt=signReceipt(buildUnsignedReceipt(dirty,'qa-independent-upload'),secret);

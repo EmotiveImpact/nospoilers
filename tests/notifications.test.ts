@@ -1159,6 +1159,7 @@ describe("Notification routes", () => {
     expect(parseRouteMinSeverity("pager")).toBeNull();
     expect(alertSeverity({ kind: "repo_created_public" })).toBe("critical");
     expect(alertSeverity({ kind: "package_unpublished" })).toBe("critical");
+    expect(alertSeverity({ kind: "delivery_still_exposed" })).toBe("critical");
     expect(alertSeverity({ kind: "identity_size_jump" })).toBe("warn");
     expect(alertSeverity({ kind: "package_publisher_changed" })).toBe("warn");
     expect(alertSeverity({ kind: "identity_provenance_lost" })).toBe("warn");

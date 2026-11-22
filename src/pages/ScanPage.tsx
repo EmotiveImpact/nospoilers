@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { watchPath } from "@/watch/routes.ts"
-import { ChevronRight, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload, X } from "lucide-react"
+import { ChevronRight, CircleMinus, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload, X } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
@@ -319,7 +319,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         {embedded ? "New scan." : "Check what you’re about to ship."}
       </h1>
       <p className={embedded ? "watch-page-status" : "mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg"}>
-        {embedded ? <><i className="watch-rail-dot is-pending" aria-hidden />Pick the exact build your customers will receive</> : "Choose the exact artifact your customers will receive."}
+        {embedded ? "Pick the exact build your customers will receive" : "Choose the exact artifact your customers will receive."}
       </p>
 
       {showPrerequisite ? (
@@ -890,10 +890,10 @@ function ScanScopeNote({ policy, href, onFollow }: { policy: string; href: strin
       </section>
       <section aria-label="What this doesn’t prove">
         <h3>What this doesn’t prove</h3>
-        <ul className="scan-limit-list">
-          <li>That your deployed website matches, unless you add a website check</li>
-          <li>That nobody downloaded a file before the check</li>
-          <li>The absence of every vulnerability</li>
+        <ul className="scan-check-list scan-limit-list">
+          <li><span className="scan-check-icon"><CircleMinus aria-hidden /></span>That your deployed website matches, unless you add a website check</li>
+          <li><span className="scan-check-icon"><CircleMinus aria-hidden /></span>That nobody downloaded a file before the check</li>
+          <li><span className="scan-check-icon"><CircleMinus aria-hidden /></span>The absence of every vulnerability</li>
         </ul>
         <p className="scan-limit-note">Each result records the supported checks, findings, and limits of that evidence.</p>
         <a onClick={onFollow} href={href}>Review scan rules <ChevronRight size={14} aria-hidden /></a>

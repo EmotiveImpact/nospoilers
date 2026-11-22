@@ -2,7 +2,7 @@
  * Behaviour for the homepage. Every example on the page is canned presentation data:
  * nothing in this file uploads, scans or calls an API.
  *
- * Only the hero moves by itself. Everything below it waits for a click.
+ * Nothing cycles on a timer: the hero follows the reader's scroll, and everything below it waits for a click.
  */
 type Cleanup = () => void
 type NetState = 'x' | 'ok' | 'n' // x = still serving, ok = cleared, n = never carried it
@@ -13,16 +13,6 @@ type Source = { name: string; fix: string; rest: string; f: Finding[] }
 
 const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.6"/></svg>'
 const OK_CIRCLE = '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="#4cc38a" stroke-width="1.5"/><path d="M4.6 7.2 6.3 8.9 9.5 5.4" fill="none" stroke="#4cc38a" stroke-width="1.5" stroke-linecap="round"/></svg>'
-
-/** The connected sources of the example release, as the hero's Trace step shows them. */
-const SOURCES_BEFORE_FIX: readonly NetNode[] = [
-  ['npm registry', 'registry.npmjs.org · 200', 'x'],
-  ['cdn.acme.example', 'Serving the map · 200', 'x'],
-  ['app.acme.example', 'Clean', 'n'],
-  ['docs.acme.example', 'Clean', 'n'],
-  ['Sentry upload', 'Private, as intended', 'n'],
-  ['GitHub release', 'Map in the release asset', 'x'],
-]
 
 const MAP: Finding = {
   sev: 'Critical', c: '', file: 'dist/cli.js.map', what: 'Embedded original source', size: '412 KB',
@@ -101,46 +91,6 @@ function drawNet(svg: SVGElement, reduce: boolean, o: NetOptions) {
   s += `<rect x="${cx - boxWidth / 2}" y="${cy - 27}" width="${boxWidth}" height="54" rx="12" fill="#131416" stroke="rgba(255,255,255,.14)"/><text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="13.5" fill="#f7f8f8" font-weight="500">${o.title}</text>`
   s += `<text x="${cx}" y="${cy + 15}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#7d828a" letter-spacing=".06em">${sub}</text>`
   svg.innerHTML = s
-}
-
-/** Every check area around the release, complete. */
-function drawWheel(svg: SVGElement, compact: boolean) {
-  const W = compact ? 360 : 640, H = 400, cx = W / 2, cy = compact ? 192 : 198, R = compact ? 96 : 128
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-  const labels = compact
-    ? ['Contents', 'Source maps', 'Secrets', 'Env files', 'Live sites', 'AI context', 'Private files', 'Inventory']
-    : ['Package contents', 'Source maps', 'Secrets', 'Environment files', 'Live sites', 'AI context', 'Private files', 'Inventory']
-  const id = `hd-arc-${svg.id}`
-  let o = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,255,255,.1)"/><circle cx="${cx}" cy="${cy}" r="${R * .55}" fill="none" stroke="rgba(255,255,255,.05)"/>`
-  o += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></linearGradient></defs>`
-  const a0 = -Math.PI / 2, a1 = -Math.PI / 2 + 1.1
-  o += `<g class="arc" style="transform-origin:${cx}px ${cy}px"><path d="M${(cx + R * Math.cos(a0)).toFixed(1)} ${(cy + R * Math.sin(a0)).toFixed(1)} A${R} ${R} 0 0 1 ${(cx + R * Math.cos(a1)).toFixed(1)} ${(cy + R * Math.sin(a1)).toFixed(1)}" fill="none" stroke="url(#${id})" stroke-width="1.6"/></g>`
-  for (let i = 0; i < 8; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a), x = cx + R * c, y = cy + R * s
-    o += `<line x1="${(cx + 38 * c).toFixed(1)}" y1="${(cy + 38 * s).toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.07)"/>`
-    o += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#0b0c0d" stroke="#3e4147"/>`
-    o += `<g class="d" style="--d:${(.15 + i * .09).toFixed(2)}s"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="rgba(76,195,138,.14)"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.8" fill="#4cc38a"/></g>`
-    const anchor = c > .3 ? 'start' : c < -.3 ? 'end' : 'middle', lx = x + (c > .3 ? 14 : c < -.3 ? -14 : 0), ly = y + (s < -.6 ? -14 : s > .6 ? 22 : 4.5)
-    o += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="12.5" fill="#9a9ea6">${labels[i]}</text>`
-  }
-  o += `<circle cx="${cx}" cy="${cy}" r="25" fill="#131416" stroke="rgba(255,255,255,.14)"/>`
-  o += `<g class="tick"><circle cx="${cx}" cy="${cy}" r="25" fill="#f7f8f8"/><path d="M${cx - 9} ${cy + 1}l6 6 12-13" fill="none" stroke="#08090a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g>`
-  svg.innerHTML = o
-}
-
-/** Hourly coverage for the last 24 hours. fix = exposed for two checks then cleared, live = still exposed, none = never. */
-function drawMatrix(el: HTMLElement, rows: readonly (readonly [string, 'fix' | 'live' | 'none'])[]) {
-  el.innerHTML = rows.map(([name, state]) => {
-    let h = `<span class="nm">${name}</span><div class="dots">`
-    for (let i = 0; i < 24; i++) {
-      let k = 'c'
-      if (state !== 'none' && (i === 21 || i === 22)) k = 'x'
-      else if (i === 23 && state === 'fix') k = 'ok'
-      else if (i === 23 && state === 'live') k = 'x now'
-      h += `<i class="${k}"></i>`
-    }
-    return `${h}</div>`
-  }).join('')
 }
 
 /** Scrolling file contents with the hits picked out. Seeded, so every visit shows the same lines. */
@@ -225,81 +175,134 @@ function start(page: HTMLElement, startScan: () => void): Cleanup {
   later(() => stage.classList.add('in'), 80)
 
   const stepsEl = $('#steps'), steps = $$('.step'), layers = $$('.app .lv'), navs = $$('.side .nv[data-n]')
-  const cols = narrow ? 22 : 38, rows = narrow ? 6 : 7
-  const hot: readonly (readonly [number, number, string])[] = narrow ? [[5, 1, 'x'], [12, 4, 'a'], [18, 2, 'v']] : [[8, 1, 'x'], [21, 4, 'a'], [30, 2, 'v']]
-  const tilesEl = $('#htiles'), sweep = $('#hsweep')
-  tilesEl.style.setProperty('--cols', String(cols))
-  tilesEl.innerHTML = ''
-  const tiles: { el: HTMLElement; col: number; hit: string | null }[] = []
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const el = document.createElement('i')
-    tilesEl.appendChild(el)
-    tiles.push({ el, col: c, hit: null })
+  // The file map, source map, hour grid and areas checked are the Watch app's own components, mounted into the
+  // preview by HomepagePieces. This script only runs the read across the file map and reveals the findings behind it.
+  const field = $('.app .field'), sweep = $('#hsweep')
+  const found = $$('.app .row.hf'), counted = $('.app .hf[data-piece]'), chip = $('#hchip'), spinner = $('#hspin')
+  const map = { grid: null as HTMLElement | null, tiles: [] as HTMLElement[], cols: 1, width: -1, left: 0, top: 0, height: 0, hits: [] as number[] }
+  /** Finds the app's tiles once they are mounted, and measures the grid again whenever its width changes. */
+  const readMap = () => {
+    if (!map.grid?.isConnected) { map.grid = field.querySelector<HTMLElement>('.np-fgrid'); map.width = -1 }
+    const grid = map.grid
+    if (!grid || grid.offsetWidth === map.width) return
+    map.width = grid.offsetWidth
+    map.tiles = Array.from(grid.querySelectorAll<HTMLElement>('.np-ft'))
+    const firstRow = map.tiles[0]?.offsetTop
+    const wrap = map.tiles.findIndex(tile => tile.offsetTop !== firstRow)
+    map.cols = wrap > 0 ? wrap : Math.max(1, map.tiles.length)
+    // the columns that hold a file with a finding, in the order the read reaches them
+    map.hits = map.tiles.flatMap((tile, i) => /is-(critical|warn)/.test(tile.className) ? [i % map.cols] : []).sort((x, y) => x - y)
+    let left = 0, top = 0
+    for (let node: HTMLElement | null = grid; node && node !== field && field.contains(node); node = node.offsetParent as HTMLElement | null) { left += node.offsetLeft; top += node.offsetTop }
+    Object.assign(map, { left, top, height: grid.offsetHeight })
   }
-  hot.forEach(([c, r, kind]) => { tiles[r * cols + c].hit = kind })
-  const keys = $$('#hkey span'), keyNote = $('#hkey em'), found = $$('.app .hf'), chip = $('#hchip'), spinner = $('#hspin')
   let lastScan = -1
   const scan = (p: number) => {
-    if (p === lastScan) return
+    readMap()
+    if (p === lastScan && map.tiles.length) return
     lastScan = p
-    const reached = p * cols
-    tiles.forEach(t => { const cl = t.col < reached ? (t.hit ?? 'r') : ''; if (t.el.className !== cl) t.el.className = cl })
-    sweep.style.left = `calc(14px + ${p} * (100% - 28px))`
-    sweep.style.opacity = p <= 0 || p >= 1 ? '0' : '1'
-    hot.forEach(([c], i) => { const on = c < reached; keys[i].classList.toggle('on', on); found[i].classList.toggle('on', on) })
-    keyNote.classList.toggle('on', p >= 1)
-    found[3].classList.toggle('on', p >= 1)
+    const reached = p * map.cols
+    map.tiles.forEach((tile, i) => tile.classList.toggle('is-unread', i % map.cols >= reached))
+    sweep.style.top = `${map.top}px`
+    sweep.style.height = `${map.height}px`
+    sweep.style.left = `${(map.left + p * Math.max(0, map.width)).toFixed(1)}px`
+    sweep.style.opacity = p <= 0 || p >= 1 || !map.tiles.length ? '0' : '1'
+    // each finding appears as the read passes the file that carries it
+    found.forEach((row, i) => row.classList.toggle('on', p >= 1 || (map.hits[i] ?? Infinity) < reached))
+    field.classList.toggle('read', p >= 1)
+    counted.classList.toggle('on', p >= 1)
     spinner.classList.toggle('ok', p >= 1)
     chip.textContent = p >= 1 ? '3 findings · 1,283 files' : `Reading ${Math.round(p * 1283).toLocaleString('en-GB')} of 1,283 files`
   }
   fillStream($('#hstream'), 14, 6)
-  drawNet($<SVGElement>('#hnet'), reduce, { compact: narrow, title: 'acme-cli v2.4.1', sub: 'PUBLISHED 08:00 UTC', subCompact: 'PUBLISHED 08:00', nodes: SOURCES_BEFORE_FIX })
-  drawWheel($<SVGElement>('#hwheel'), narrow)
-  drawMatrix($('#hmx'), [['npm registry', 'fix'], ['GitHub release', 'fix'], ['cdn.acme.example', 'live'], ['app.acme.example', 'none'], ['docs.acme.example', 'none']])
 
-  const STEP_MS = 7000
-  let current = -1, elapsed = 0
+  // The hero follows the reader. Nothing cycles on a timer: scrolling raises and straightens the preview and pins it,
+  // then moves it through the four steps. A step can also be chosen directly, which scrolls to it.
+  const story = $('#story'), pin = $('#pin'), plane = $('.plane')
+  const header = document.querySelector<HTMLElement>('header.v20-nav')
+  let current = -1, stopScan: Cleanup | null = null
   const go = (n: number) => {
+    if (n === current) return
     current = n
-    elapsed = 0
     steps.forEach((step, i) => {
       step.classList.toggle('on', i === n)
       step.setAttribute('aria-selected', i === n ? 'true' : 'false')
-      const bar = step.querySelector<HTMLElement>('u')
-      if (bar) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '' } // restart the progress line
     })
     layers.forEach(layer => { layer.classList.toggle('on', Number(layer.dataset.s) === n); layer.classList.remove('lit') })
     navs.forEach(nav => nav.classList.toggle('on', (nav.dataset.n ?? '').split(' ').includes(String(n))))
+    stopScan?.()
     lastScan = -1
-    scan(n === 0 && !reduce && canAnimate ? 0 : 1)
+    // Inspect reads the files once each time it is shown; the other steps show their finished picture
+    if (n === 0) { scan(reduce || !canAnimate ? 1 : 0); stopScan = tween(3600, scan) } else { stopScan = null; scan(1) }
     if (n === 3) later(() => layers.forEach(layer => { if (Number(layer.dataset.s) === 3 && current === 3) layer.classList.add('lit') }), reduce ? 0 : 250)
   }
-  steps.forEach((step, i) => step.addEventListener('click', () => go(i), { signal }))
-  go(0)
-  if (reduce || !canAnimate) stepsEl.classList.add('still')
-  else {
-    stepsEl.classList.remove('still')
-    let held = false, visible = true, last = performance.now()
-    const hold = () => stepsEl.classList.toggle('hold', held || !visible)
-    stepsEl.addEventListener('pointerenter', () => { held = true; hold() }, { signal })
-    stepsEl.addEventListener('pointerleave', () => { held = false; hold() }, { signal })
-    if (canObserve) {
-      const watchStage = new IntersectionObserver(entries => { visible = entries[0].isIntersecting; hold() })
-      watchStage.observe(stage)
-      observers.push(watchStage)
+  if (reduce) stepsEl.classList.add('still')
+
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
+  const geo = { start: 1, range: 1, laidOut: false, k: 1, left: 0, top: 0 }
+  const measure = () => {
+    const top = header && /sticky|fixed/.test(getComputedStyle(header).position) ? header.offsetHeight : 0
+    page.style.setProperty('--navh', `${top}px`)
+    page.style.setProperty('--pinh', `${window.innerHeight - top}px`)
+    geo.start = Math.max(1, story.getBoundingClientRect().top + window.scrollY - top)
+    geo.range = Math.max(1, story.offsetHeight - pin.offsetHeight)
+    geo.laidOut = story.offsetHeight > 0
+    // the steps run in one centred row as wide as the preview, and the two sit centred in the pinned window
+    if (document.documentElement.clientWidth > 720) {
+      const W = pin.clientWidth, H = pin.clientHeight, gap = clamp(H * 0.025, 12, 24)
+      const fit = () => Math.min(1, (W * 0.92) / 1180, (H - stepsEl.offsetHeight - gap * 2) / 720)
+      page.style.setProperty('--padt', '0px')
+      page.style.setProperty('--rw', `${Math.round(1180 * fit())}px`)
+      const k = fit(), above = stepsEl.offsetHeight
+      const padt = Math.max(0, (H - above - gap * 2 - 720 * k) / 2)
+      page.style.setProperty('--padt', `${padt.toFixed(1)}px`)
+      Object.assign(geo, { k, left: (W - 1180 * k) / 2, top: padt + above + gap })
+    } else {
+      page.style.removeProperty('--rw')
+      page.style.removeProperty('--padt')
     }
-    const tick = (now: number) => {
-      const delta = Math.min(100, now - last)
-      last = now
-      if (visible && !held) {
-        elapsed += delta
-        if (current === 0) scan(Math.min(1, Math.max(0, (elapsed - 400) / 3600)))
-        if (elapsed > STEP_MS) go((current + 1) % 4)
-      }
-      frame(tick)
-    }
-    frame(tick)
   }
+  let driving = false
+  const draw = () => {
+    const y = window.scrollY
+    const f = clamp(y / geo.start, 0, 1)                    // how far the preview has risen and straightened
+    const sp = clamp((y - geo.start) / geo.range, 0, 0.9999) // how far through the four steps, once pinned
+    const vw = document.documentElement.clientWidth
+    if (vw > 720 && (driving || y > 0)) {
+      if (!driving) { driving = true; stage.classList.add('drive') }
+      const e = reduce ? 1 : ease(f)
+      const W = pin.clientWidth, k0 = Math.min(1, (W * 0.94) / 1250)
+      // the whole preview, sidebar and all, settles centred under the row of steps
+      const { k, left, top } = geo
+      const tx = -20 * (1 - e) + (left - W * 0.04) * e, ty = 290 * k0 * (1 - e) + top * e, s = k0 + (k - k0) * e
+      const flat = e > 0.999 // once straight, a flat transform keeps the preview's text sharp
+      plane.style.transform = flat
+        ? `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${s.toFixed(4)})`
+        : `rotateX(${(36 * (1 - e)).toFixed(2)}deg) rotateZ(${(-12 * (1 - e)).toFixed(2)}deg) translate3d(${tx.toFixed(1)}px,${ty.toFixed(1)}px,0) scale(${s.toFixed(4)})`
+      stage.classList.toggle('flat', flat)
+    } else if (vw <= 720) { plane.style.transform = ''; stage.classList.remove('flat') }
+    stepsEl.classList.toggle('shown', f > 0.85)
+    const n = Math.min(3, Math.floor(sp * 4)), within = sp * 4 - n
+    go(n)
+    steps.forEach((step, i) => step.style.setProperty('--p', String(i < n ? 1 : i === n ? within.toFixed(3) : 0)))
+  }
+  let queued = false
+  const request = () => {
+    if (!canAnimate) { draw(); return }
+    if (queued) return
+    queued = true
+    frame(() => { queued = false; draw() })
+  }
+  steps.forEach((step, i) => step.addEventListener('click', () => {
+    go(i)
+    if (geo.laidOut) window.scrollTo({ top: geo.start + (i / 4 + 0.03) * geo.range, behavior: reduce ? 'auto' : 'smooth' })
+  }, { signal }))
+  window.addEventListener('scroll', request, { passive: true, signal })
+  window.addEventListener('resize', () => { measure(); request() }, { signal })
+  measure()
+  draw()
+  later(() => { measure(); draw() }, 600)
 
   // ---- release boundary: the finished picture is on the page, the button replays it ----
   const stages = $$('.bst'), boundaryState = $('#bndstate'), boundaryRun = $<HTMLButtonElement>('#bndrun')

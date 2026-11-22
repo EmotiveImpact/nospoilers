@@ -108,6 +108,8 @@ export function watchHref(
     install?: number | null;
     alert?: number | null;
     release?: number | null;
+    /** Opens the release on a named section. Dropped whenever the selected release changes. */
+    releaseTab?: "where" | null;
     previewRelease?: number | null;
     source?: string | null;
     sourceType?: SourceFilter | null;
@@ -126,7 +128,7 @@ export function watchHref(
   if(path!=="/watch/alerts"&&['pageSize','tab','alert','mine'].some(key=>params.has(key))){params.delete('before');params.delete('pageSize');}
   if(path!=="/watch/alerts"&&path!=="/watch/releases")params.delete('before');
   if(path!=="/watch/releases"&&params.has('hostedDecision')){params.delete('hostedDecision');params.delete('before');}
-  if(path!=="/watch/releases")for(const key of ['release','releaseFinding','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore','uploadPageSize','uploadQuery','uploadTrail'])params.delete(key);
+  if(path!=="/watch/releases")for(const key of ['release','releaseTab','releaseFinding','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore','uploadPageSize','uploadQuery','uploadTrail'])params.delete(key);
   if(path!=="/watch/alerts")for(const key of ['alert','tab','mine'])params.delete(key);
   if(extra.release || extra.previewRelease)for(const key of ['upload','uploadView','uploadFinding','uploadTab'])params.delete(key);
   if (extra.install !== undefined) {
@@ -138,9 +140,13 @@ export function watchHref(
     else params.delete("alert");
   }
   if (extra.release !== undefined) {
-    if (String(extra.release ?? '') !== (params.get('release') ?? '')) params.delete('releaseFinding');
+    if (String(extra.release ?? '') !== (params.get('release') ?? '')) { params.delete('releaseFinding'); params.delete('releaseTab'); }
     if (extra.release) params.set("release", String(extra.release));
     else params.delete("release");
+  }
+  if (extra.releaseTab !== undefined) {
+    if (extra.releaseTab && params.has("release")) params.set("releaseTab", extra.releaseTab);
+    else params.delete("releaseTab");
   }
   if (extra.previewRelease !== undefined) {
     if (extra.previewRelease) params.set("preview", String(extra.previewRelease));

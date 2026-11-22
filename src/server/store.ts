@@ -7813,6 +7813,94 @@ export function createStore(
       return rows[0] ? releaseRevisionRow(rows[0]) : null;
     },
 
+    /** Revisions recorded for the same package or repository as this one, oldest first. */
+    async listReleaseLineage(revisionId: number, limit = 200): Promise<ReleaseRevisionRow[]> {
+      const { rows } = await sql.query<ReleaseRevisionSqlRow>(
+        `SELECT rr.*, sr.status AS receipt_status
+         FROM release_revisions rr
+         JOIN release_revisions base ON base.id = $1
+         LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
+         WHERE rr.installation_id = base.installation_id
+           AND rr.package_id IS NOT DISTINCT FROM base.package_id
+           AND rr.repo_id IS NOT DISTINCT FROM base.repo_id
+         ORDER BY rr.created_at DESC, rr.id DESC
+         LIMIT $2`,
+        [revisionId, limit],
+      );
+      return rows.map(releaseRevisionRow).reverse();
+    },
+
+    /** Delivery URLs on releases recorded since `sinceIso`: the set the hourly recheck covers. */
+    async listDeliveryLocationsForRecheck(
+      sinceIso: string,
+    ): Promise<{ id: number; installation_id: number; revision_id: number }[]> {
+      const { rows } = await sql.query<{ id: unknown; installation_id: unknown; revision_id: unknown }>(
+        `SELECT l.id, l.installation_id, l.revision_id
+         FROM release_delivery_locations l
+         JOIN release_revisions rr ON rr.id = l.revision_id
+         WHERE rr.created_at >= $1::timestamptz
+         ORDER BY l.id ASC`,
+        [sinceIso],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+        revision_id: num(row.revision_id),
+      }));
+    },
+
+    /** Recorded checks of these delivery URLs since `sinceIso`, oldest first. */
+    async listDeliveryVerificationsSince(
+      locationIds: number[],
+      sinceIso: string,
+    ): Promise<DeliveryVerificationRow[]> {
+      if (locationIds.length === 0) return [];
+      const placeholders = locationIds.map((_, index) => `$${index + 2}`).join(", ");
+      const { rows } = await sql.query<Parameters<typeof deliveryVerificationRow>[0]>(
+        `SELECT * FROM release_delivery_verifications
+         WHERE created_at >= $1::timestamptz AND location_id IN (${placeholders})
+         ORDER BY id ASC`,
+        [sinceIso, ...locationIds],
+      );
+      return rows.map(deliveryVerificationRow);
+    },
+
+    async alertExistsForDeliveryId(deliveryId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `SELECT id FROM alerts WHERE github_delivery_id = $1 LIMIT 1`,
+        [deliveryId],
+      );
+      return rows.length > 0;
+    },
+
+    /** Alerts the scan producer linked to this release revision, oldest first. */
+    async listAlertsForRevision(
+      revisionId: number,
+    ): Promise<{ id: number; title: string; created_at: string; resolved_at: string | null }[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        title: string;
+        created_at: string | Date;
+        resolved_at: string | Date | null;
+      }>(
+        `SELECT a.id, a.title, a.created_at, a.resolved_at
+         FROM alert_release_links l
+         JOIN alerts a ON a.id = l.alert_id
+         JOIN release_revisions r ON r.id = l.revision_id AND r.installation_id = a.installation_id
+         WHERE l.revision_id = $1
+           AND row_within_retention(a.installation_id, a.created_at)
+         ORDER BY a.id ASC
+         LIMIT 20`,
+        [revisionId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        title: row.title,
+        created_at: iso(row.created_at) ?? "",
+        resolved_at: iso(row.resolved_at),
+      }));
+    },
+
     async listDeliveryAttacherLogins(revisionId: number): Promise<string[]> {
       const { rows } = await sql.query<{ created_by_login: string }>(
         `SELECT DISTINCT created_by_login
@@ -8016,7 +8104,19 @@ export function createStore(
     async countDeliveryLocations(input: {
       installationId: number;
       revisionId?: number;
+      /** Count only URLs on releases recorded since this time: the ones still being tracked. */
+      sinceIso?: string;
     }): Promise<number> {
+      if (input.sinceIso && !input.revisionId) {
+        const { rows } = await sql.query<{ n: unknown }>(
+          `SELECT count(*)::int AS n
+           FROM release_delivery_locations l
+           JOIN release_revisions rr ON rr.id = l.revision_id
+           WHERE l.installation_id = $1 AND rr.created_at >= $2::timestamptz`,
+          [input.installationId, input.sinceIso],
+        );
+        return num(rows[0]?.n ?? 0);
+      }
       const { rows } = await sql.query<{ n: unknown }>(
         input.revisionId
           ? `SELECT count(*)::int AS n FROM release_delivery_locations

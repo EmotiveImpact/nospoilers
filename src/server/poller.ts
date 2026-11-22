@@ -5,6 +5,7 @@ import { runNpmWatchPoll } from "./npm-watch.ts";
 import { runWebOriginPoll } from "./web-watch.ts";
 import { runWorkspaceOriginPoll } from './workspace-origin-schedule.ts';
 import { runMapCustodyPoll } from "./map-watch.ts";
+import { runDeliveryRecheckPoll } from "./delivery-verify.ts";
 import { runProspectAcquisitionPoll } from "./prospect-feed.ts";
 import { runNamespaceWatchPoll } from "./namespace-watch.ts";
 import { sweepExpiredDisclosureEvidence } from "./disclosure.ts";
@@ -48,6 +49,7 @@ export type PollerTickResult = {
   namespacesQueued: number;
   webQueued: number;
   mapsQueued: number;
+  deliveryQueued: number;
   prospectsFeedQueued: number;
   prospectsDiscoveryQueued: number;
 };
@@ -60,6 +62,8 @@ export async function runPollerTick(deps: {
   wakeWorker?: () => void;
   prospectDiscovery?: { token: string; maxAssetBytes: number };
   staleAfterMs?: number;
+  /** False turns the hourly delivery recheck off; checks run on demand still work. */
+  deliveryRecheck?: boolean;
 }): Promise<PollerTickResult> {
   const visibilityAlerts = await runVisibilityPoll(deps);
   const npm = await runNpmWatchPoll(deps);
@@ -68,6 +72,8 @@ export async function runPollerTick(deps: {
   const workspaceWeb = await runWorkspaceOriginPoll(deps);
   web.queued += workspaceWeb.queued;
   const maps = await runMapCustodyPoll(deps);
+  const delivery =
+    deps.deliveryRecheck === false ? { queued: 0 } : await runDeliveryRecheckPoll({ store: deps.store });
   const prospects = await runProspectAcquisitionPoll({
     store: deps.store,
     npm: deps.npm,
@@ -83,6 +89,7 @@ export async function runPollerTick(deps: {
       namespaces.queued +
       web.queued +
       maps.queued +
+      delivery.queued +
       prospects.feedQueued +
       prospects.discoveryQueued >
     0
@@ -95,6 +102,7 @@ export async function runPollerTick(deps: {
     namespacesQueued: namespaces.queued,
     webQueued: web.queued,
     mapsQueued: maps.queued,
+    deliveryQueued: delivery.queued,
     prospectsFeedQueued: prospects.feedQueued,
     prospectsDiscoveryQueued: prospects.discoveryQueued,
   };
@@ -109,6 +117,7 @@ export function startPoller(
     wakeWorker?: () => void;
     prospectDiscovery?: { token: string; maxAssetBytes: number };
     staleAfterMs?: number;
+    deliveryRecheck?: boolean;
   },
   intervalMs: number,
 ): { stop: () => Promise<void> } {

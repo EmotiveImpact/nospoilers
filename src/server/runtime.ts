@@ -62,6 +62,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     heavyConcurrency: runJobs ? config.heavyConcurrency : 0,
     lightConcurrency: config.lightConcurrency,
     maxAssetBytes: config.maxAssetBytes,
+    deliveryRecheck: config.deliveryRecheck,
     intervalMs: config.workerIntervalMs,
     staleAfterMs: config.jobStaleMs,
     receiptSecret: config.receiptSecret,
@@ -80,6 +81,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
       : undefined,
     staleAfterMs: config.jobStaleMs,
+    deliveryRecheck: config.deliveryRecheck,
   };
   const emailAuthProblems = emailAuthConfigurationProblems();
   if (emailAuthProblems.length) throw new Error(`Email sign-in configuration failed:\n- ${emailAuthProblems.join('\n- ')}`);

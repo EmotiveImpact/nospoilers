@@ -64,6 +64,40 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 ---
 
+# App screens from the homepage preview, 22 November 2026
+
+The owner approved a mock of the homepage preview built as real Watch screens ("this is the application.... yes! build this") and asked for the preview to then be the application itself. This section records what was looked at. It is local evidence on a seeded test workspace, not production or customer acceptance.
+
+- Signed-in app: production bundle served by `scripts/gate-b-browser-fixture.ts` (ephemeral in-memory database, network disabled, no workers), Chromium at 1440 CSS pixels wide, device scale 2. The fixture now packs and really scans two 213-file archives for its `qa-trail-cli` releases so the file map is shown at a realistic size.
+- Release check, Findings tab of the blocked `npm:qa-trail-cli@2.4.1`: 213 tiles, 2 lit (`index.js`, `index.js.map`), facts read tarball, 213 files, 4.5 KB, and the line beneath reads **Checked, nothing found · 211 files**. Choosing a lit tile selects its finding. The finding panel leads with the path; its "Affected file" label was left visible with nothing under it by the earlier borderless pass and is now kept for screen readers only, and the severity is a chip again instead of a full-width bar.
+- Proof tab: eight areas, Source maps red with 3 findings, Live sites red with **Delivery differs**, Inventory **213 files hashed**, the rest clear, 3 in the centre. The receipt check printed `Receipt passed · SHA-256 matches` and `result: blocked · 3 findings` from the server's verification of receipt 5.
+- Where it went tab: the source map shows the registry and one download host cleared and `cdn.qa-fixture.example.com` still serving, with the verified website as watched context. When found and Now switch the same picture between the first and latest reads. After the fix shows 2.3.2, 2.4.0, 2.4.1 (blocked) and 2.4.2 (fix passed), three rows of hourly cells, the verdict line and What happened in order.
+- Alert "cdn.qa-fixture.example.com still serves npm:qa-trail-cli@2.4.1 after the fix": carries the same After the fix block and an **Open Where it went** link. The queue shows it with a High chip, as it does the other delivery alerts.
+- Coverage: opening the `qa-trail-cli` source offers **Where it went**, which opens that tab on the source's latest release (2.4.2). That release has no tracked copy in the fixture, so the tab shows its empty state, **Not tracked yet · no copy of this release is being tracked**, with the verified website as watched context.
+- Homepage at 1440x900 and 390x844: all four steps are reached by scrolling and by choosing a step, the step holds without scrolling, no page errors, no sideways scroll. Inspect sweeps over the app's file map (214 tiles for 1,283 files, 3 lit) and reveals each finding as the sweep passes its file. Trace, Watch and Prove draw the app's source map and list, After the fix, the eight areas and the receipt check from the Acme example. On the phone the file map uses 27 columns so all three findings stay inside the frame.
+- With the hourly recheck switched off (the same fixture started with `DELIVERY_RECHECK=off`, later on 22 November): Where it went reads **Hourly checks are off** under its heading and **hourly checks are off** beside After the fix, and What this covers says a copy is read only when you choose Verify now. The still-serving alert carries the same label, its body ends "run Verify now on the release once it is replaced, because hourly rechecks are not running for it", and its guidance no longer states a schedule. The "Hourly checks have ended" state for a release older than 30 days is covered by tests and was not looked at in a browser, because the fixture has no release that old.
+- Browser console: no errors on any of these screens.
+- Not checked: the live site and live app, real customer data, Safari and Firefox, a screen reader, 200% zoom, and a real hourly read against a real registry or CDN (the fixture seeds recorded reads; the worker path is covered by tests with an injected transport).
+
+# Homepage follow-ups, 21 November 2026
+
+The owner asked for Start a scan to go red on hover and for the repository link to go. After seeing the headline levelled with the copy beside it, the owner asked for a bigger explanation and for the whole hero top to be centred.
+
+- The hero head is one centred stack: headline up to 72px on two balanced lines (max 14em), explanation at 17px to 20px (max 34em), buttons and the trial line centred. Hero top padding is now 72px to 104px so the preview still shows below the buttons on a 900px tall window. Checked at 1440, 1180, 820 and 390 CSS pixels.
+- The owner then found the steps beside the pinned preview too much at the side. The steps are now one centred row above the preview at every width, as wide as the preview, with the preview centred under it; the pair is centred vertically in the pinned window when there is room. Above 960px each step shows its explanation at 14.5px (was 13.5px); narrower screens show names only. Each step's line sits on top and fills left to right. Checked by scrolling at 1920x1080, 1440x900, 1024x768, 820x1000 and 390x844: all four steps reached, choosing Prove scrolls to it, the step holds without scrolling, no page errors, no sideways scroll.
+- Start a scan (navigation, hero, close) is red at rest (#e0203a) and a deeper red on hover (#c81b31); white text measures 4.7:1 and above.
+- The white Team trial button hovers to #e0203a with white text and border. The accent red (#ff2d47) gives white text only 3.7:1, so buttons use a deeper red at 4.7:1.
+- Removed the GitHub link from the shared footer and from three old mockup footers in `public/mockup-review`. The GitHub Action docs still show `uses: EmotiveImpact/nospoilers@…` because that is how the Action is referenced.
+- The scroll story still reaches all four steps at 1440 and 390 with no page errors.
+
+# Homepage hero, option C, 20 November 2026
+
+After homepage 31 shipped, the owner found the top too busy (headline, a four-row list and a switching preview stacked together). Three mockups were compared; the owner chose option C and asked to keep the preview's sidebar and use the empty space on the right. The rest of the page is unchanged from homepage 31.
+
+- The hero is a headline on the left with its copy and buttons on the right, then a tall scroll story with a pinned preview. On arrival the preview is tilted as before and nothing cycles. Scrolling straightens it and pins it; above 960 CSS pixels the four steps stand on its left in the page column and the full preview fills the room up to the right edge of the window. Between 721 and 960 the steps sit as a row above the preview; phones keep the flat preview with the steps as a row.
+- Checked on the development server at 1440, 1024, 820 and 390 CSS pixels, with and without reduced motion: each step is reached by scrolling, choosing a step scrolls to it, the step stays put for more than one old seven-second cycle without scrolling, no console errors and no sideways scroll.
+- Not checked: native 200% zoom, a screen reader, Safari and Firefox.
+
 # Homepage 31 production verification, 20 November 2026
 
 The owner approved a new homepage mockup ("homepage 31") on 20 November 2026 and asked for it to be built. It replaces the homepage D presentation described in the next section, which is kept as history. The implementation still lives at `/` via `HomepageD.tsx`, bundled markup and styles scoped to `.homepage-d`; behaviour is in `homepage-d-interactions.ts`.

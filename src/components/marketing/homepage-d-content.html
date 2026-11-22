@@ -1,17 +1,18 @@
-<section class="hero"><div class="w hgrid">
-  <div>
-    <h1 class="h1 rv">NoSpoilers checks what your release actually ships</h1>
+<section class="hero"><div class="w hhead">
+  <h1 class="h1 rv">NoSpoilers checks what your release actually ships</h1>
+  <div class="hside">
     <p class="lead rv">Git scanners tell you what was written. NoSpoilers reads the packages and production assets your customers receive, and catches <b>source maps, secrets, internal files and AI context</b> before they go public.</p>
-    <div class="ctas rv"><button class="btn lt lg start" type="button">Start a scan</button><a class="btn gh lg" href="#inspect">See how it works <span class="ar">→</span></a></div>
+    <div class="ctas rv"><button class="btn red lg start" type="button">Start a scan</button><a class="btn gh lg" href="#inspect">See how it works <span class="ar">→</span></a></div>
     <p class="micro rv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.4 2.8 2.8 6.2-6.6"/></svg>Free to try for five days. No credit card.</p>
   </div>
-  <div class="steps rv" id="steps" role="tablist" aria-label="One release, four steps">
+</div>
+<div class="story" id="story"><div class="pin" id="pin">
+  <div class="steps" id="steps" role="tablist" aria-label="One release, four steps">
     <button class="step on" role="tab" aria-selected="true" type="button"><em>01</em><b>Inspect</b><span>Read the build your customers install</span><i><u></u></i></button>
     <button class="step" role="tab" aria-selected="false" type="button"><em>02</em><b>Trace</b><span>Follow it to every connected source</span><i><u></u></i></button>
     <button class="step" role="tab" aria-selected="false" type="button"><em>03</em><b>Watch</b><span>Check each source every hour</span><i><u></u></i></button>
     <button class="step" role="tab" aria-selected="false" type="button"><em>04</em><b>Prove</b><span>Record exactly what was checked</span><i><u></u></i></button>
   </div>
-</div>
   <div class="stage" id="stage" aria-label="Preview: one release moving through inspect, trace, watch and prove. Example data.">
     <div class="plane"><div class="app">
       <aside class="side">
@@ -20,8 +21,8 @@
         <div class="nv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1"/><rect x="9" y="9" width="4.5" height="4.5" rx="1"/></svg>Overview</div>
         <div class="nv" data-n="2"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M4 11V7a4 4 0 0 1 8 0v4l1.2 1.5H2.8z"/><path d="M6.5 14h3"/></svg>Alerts<em class="hot">1</em></div>
         <div class="grp">Evidence</div>
-        <div class="nv" data-n="1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2.2"/></svg>Coverage<em>6</em></div>
-        <div class="nv on" data-n="0 3"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4.5 8 2l5.5 2.5v7L8 14l-5.5-2.5z"/><path d="M2.5 4.5 8 7l5.5-2.5M8 7v7"/></svg>Releases<em>3</em></div>
+        <div class="nv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2.2"/></svg>Coverage<em>6</em></div>
+        <div class="nv on" data-n="0 1 3"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4.5 8 2l5.5 2.5v7L8 14l-5.5-2.5z"/><path d="M2.5 4.5 8 7l5.5-2.5M8 7v7"/></svg>Releases<em>3</em></div>
         <div class="nv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8h3l2-4.5 3 9 2-4.5h3"/></svg>Timeline</div>
         <div class="grp">Packages</div>
         <div class="pk"><i class="r"></i>acme-cli</div><div class="pk"><i></i>acme-sdk</div><div class="pk"><i></i>acme-ui</div>
@@ -32,37 +33,27 @@
         <div class="lv on" data-s="0">
           <div class="crumb"><span class="cr">Releases / acme-cli /</span> <b>v2.4.1</b><span class="chip"><span class="spin" id="hspin"></span><span id="hchip">Reading 0 of 1,283 files</span></span></div>
           <h3 class="mtitle" style="margin-bottom:14px">Release check</h3>
-          <div class="field"><div class="tiles" id="htiles"></div><span class="sweep" id="hsweep"></span></div>
-          <div class="fkey" id="hkey"><span><i></i>dist/cli.js.map</span><span><i class="a"></i>config/.env</span><span><i class="v"></i>prompts/system.txt</span><em>3 findings need review</em></div>
+          <div class="field"><div data-piece="filemap"></div><span class="sweep" id="hsweep"></span></div>
           <div class="row sel hf"><span class="sev">Critical</span><div><b>dist/cli.js.map</b><small>Embedded original source</small></div><span class="sz">412 KB</span></div>
-          <div class="row hf"><span class="sev h">High</span><div><b>config/.env</b><small>Environment file with two keys</small></div><span class="sz">1 KB</span></div>
-          <div class="row hf"><span class="sev v">Review</span><div><b>prompts/system.txt</b><small>Possible private AI context</small></div><span class="sz">6 KB</span></div>
-          <div class="okline hf"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="none" stroke="#4cc38a" stroke-width="1.5"/><path d="M4.6 7.2 6.3 8.9 9.5 5.4" fill="none" stroke="#4cc38a" stroke-width="1.5" stroke-linecap="round"/></svg>Checked, nothing found <em>1,280</em></div>
+          <div class="row hf"><span class="sev h">Warning</span><div><b>config/.env</b><small>Environment file with two keys</small></div><span class="sz">1 KB</span></div>
+          <div class="row hf"><span class="sev h">Warning</span><div><b>prompts/system.txt</b><small>Possible private AI context</small></div><span class="sz">6 KB</span></div>
+          <div class="hf" data-piece="fileclear"></div>
         </div>
         <div class="lv" data-s="1">
-          <div class="crumb"><span class="cr">Coverage / acme-cli /</span> <b>Where it went</b><span class="chip"><i></i>3 sources carry the map</span></div>
-          <h3 class="mtitle">Where v2.4.1 went</h3>
-          <div class="netbox"><svg class="net" id="hnet" preserveAspectRatio="xMidYMin meet" role="img" aria-label="acme-cli v2.4.1 at the centre, linked to the npm registry, the GitHub release and cdn.acme.example, which carry the source map, and to the app, the docs site and the Sentry upload, which do not"></svg></div>
+          <div class="crumb"><span class="cr">Releases / acme-cli / v2.4.1 /</span> <b>Where it went</b><span class="chip"><i></i>3 sources carry this build</span></div>
+          <h3 class="mtitle" style="margin-bottom:14px">Where v2.4.1 went</h3>
+          <div class="pc-net" data-piece="net"></div>
+          <div class="pc-narrow" data-piece="hosts"></div>
         </div>
         <div class="lv" data-s="2">
-          <div class="crumb"><span class="cr">Alerts /</span> <b>cdn.acme.example still serving</b><span class="chip">Checked every hour</span></div>
-          <h3 class="mtitle" style="margin-bottom:14px">Coverage after the fix</h3>
-          <div class="vtl">
-            <span class="ax"></span>
-            <span class="v h1" style="left:9%"><i></i><span>v2.3.2</span></span>
-            <span class="v" style="left:24%"><i></i><span>v2.4.0</span></span>
-            <span class="v x" style="left:46%"><i></i><span>v2.4.1</span></span><span class="tg" style="left:46%">Source map exposed</span>
-            <span class="v f" style="left:70%"><i></i><span>v2.4.2</span></span><span class="tg w" style="left:70%">Fix shipped 10:00</span>
-            <span class="now" style="left:90%"><b>NOW</b></span>
-          </div>
-          <div class="mx sm" id="hmx"></div>
-          <div class="mx sm" style="margin-top:6px"><span></span><div class="hrs5"><span>11:00</span><span>17:00</span><span>23:00</span><span>05:00</span><span>Now</span></div></div>
-          <div class="alertc"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.8v3.6M8 10.9h.01" stroke-linecap="round"/></svg><span><b>cdn.acme.example is still serving</b> <code>dist/cli.js.map</code></span><span class="t">Alert sent 10:42 UTC</span></div>
+          <div class="crumb"><span class="cr">Alerts /</span> <b>cdn.acme.example still serves v2.4.1</b><span class="chip">Checked every hour</span></div>
+          <h3 class="mtitle" style="margin-bottom:14px">After the fix</h3>
+          <div data-piece="afterfix"></div>
         </div>
         <div class="lv" data-s="3">
           <div class="crumb"><span class="cr">Releases / acme-cli /</span> <b>v2.4.2</b><span class="chip g"><i></i>0 findings</span></div>
-          <h3 class="mtitle">Release proof</h3>
-          <div class="netbox"><svg class="wheel" id="hwheel" preserveAspectRatio="xMidYMin meet" role="img" aria-label="Eight check areas around the release, all complete with no findings"></svg></div>
+          <h3 class="mtitle" style="margin-bottom:14px">Release proof</h3>
+          <div data-piece="wheel"></div>
         </div>
       </div>
       <div class="det">
@@ -73,37 +64,24 @@
           <p class="dnote">Opens each file as installed</p>
         </div>
         <div class="lv" data-s="1">
-          <div><span class="id">Connected sources</span><h4>Three sources carry the source map</h4></div>
-          <div class="hosts">
-            <div><i class="r"></i><span>registry.npmjs.org</span><em class="r">200</em></div>
-            <div><i class="r"></i><span>GitHub release</span><em class="r">in the asset</em></div>
-            <div><i class="r"></i><span>cdn.acme.example</span><em class="r">200</em></div>
-            <div><i></i><span>app.acme.example</span><em>clean</em></div>
-            <div><i></i><span>docs.acme.example</span><em>clean</em></div>
-            <div><i></i><span>Sentry upload</span><em>private</em></div>
-          </div>
+          <div><span class="id">Connected sources</span><h4>Three sources carry this build</h4></div>
+          <div data-piece="hosts"></div>
           <p class="dnote">Ship a fix, then watch each source clear</p>
         </div>
         <div class="lv" data-s="2">
-          <div><span class="id">Activity</span><h4>cdn.acme.example is still serving the map</h4></div>
-          <ol class="feed">
-            <li><i></i><b>v2.4.1 published</b><span>08:00</span></li>
-            <li class="r"><i></i><b>Source map found in the package</b><span>08:01</span></li>
-            <li class="r"><i></i><b>Carried by three connected sources</b><span>08:05</span></li>
-            <li class="g"><i></i><b>v2.4.2 shipped without the map</b><span>10:00</span></li>
-            <li class="g"><i></i><b>npm and the GitHub release clear</b><span>10:00</span></li>
-            <li class="r"><i></i><b>Alert sent: cdn.acme.example still serving</b><span>10:42</span></li>
-          </ol>
-          <p class="dnote">Owner: Dana · Platform</p>
+          <div><span class="id">What happened</span><h4>cdn.acme.example is still serving v2.4.1</h4></div>
+          <div data-piece="feed"></div>
+          <p class="dnote">Every copy is read again each hour for 30 days</p>
         </div>
         <div class="lv" data-s="3">
           <div><span class="id">Release proof</span><h4>No findings in completed checks</h4></div>
-          <dl class="rcpt"><dt>Release</dt><dd>acme-cli v2.4.2</dd><dt>Identity</dt><dd>sha256:a91f…d82c</dd><dt>Scope</dt><dd>package, 6 sources</dd><dt>Checked</dt><dd>5 Nov · 11:20 UTC</dd><dt>Result</dt><dd class="ok">0 findings</dd></dl>
-          <div class="term"><span class="p">$</span> nospoilers verify --receipt …<br><span class="ok">Receipt passed</span> <span class="p">· SHA-256 matches</span></div>
+          <dl class="rcpt"><dt>Release</dt><dd>acme-cli v2.4.2</dd><dt>Identity</dt><dd>sha256:a91f…d82c</dd><dt>Scope</dt><dd>package, 6 sources</dd><dt>Checked</dt><dd>5 Nov · 10:02 UTC</dd><dt>Result</dt><dd class="ok">0 findings</dd></dl>
+          <div data-piece="receipt"></div>
         </div>
       </div>
     </div></div>
   </div>
+</div></div>
 </section>
 
 <section class="strip"><div class="w">
@@ -253,5 +231,5 @@
 
 <section class="close"><div class="w">
   <h2 class="h2 rv">Know what shipped. <span>Before your customers do.</span></h2>
-  <div class="ctas rv"><button class="btn lt lg start" type="button">Start a scan</button><a class="btn lg" href="mailto:hello@nospoilers.dev">Talk to us</a></div>
+  <div class="ctas rv"><button class="btn red lg start" type="button">Start a scan</button><a class="btn lg" href="mailto:hello@nospoilers.dev">Talk to us</a></div>
 </div></section>

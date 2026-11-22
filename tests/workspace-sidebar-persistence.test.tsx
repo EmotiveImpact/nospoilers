@@ -49,3 +49,22 @@ it('does not reuse workspace names across signed-in identities',async()=>{
  expect(screen.queryByText('Private studio')).toBeNull();
  expect(screen.getByText('Loading workspaces…')).toBeTruthy();
 });
+
+it('collapses the sidebar with the "[" key, remembers it, and ignores the key while typing',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[],counts:{open:0}})));
+ vi.stubGlobal('matchMedia',(query:string)=>({matches:query.includes('min-width: 1024px'),media:query,addEventListener(){},removeEventListener(){}}));
+ render(<><Shell/><input aria-label="Notes"/></>);
+ expect(screen.getByRole('button',{name:'Collapse sidebar'}).getAttribute('aria-keyshortcuts')).toBe('[');
+ fireEvent.keyDown(window,{key:'['});
+ expect(screen.getByRole('button',{name:'Expand sidebar'}).getAttribute('aria-expanded')).toBe('false');
+ expect(localStorage.getItem('nospoilers.watch.sidebar-collapsed')).toBe('1');
+ // On the icon rail every destination keeps its name as a tooltip.
+ expect(screen.getByRole('link',{name:'Alerts'}).getAttribute('title')).toBe('Alerts');
+ fireEvent.keyDown(screen.getByLabelText('Notes'),{key:'['});
+ expect(screen.getByRole('button',{name:'Expand sidebar'})).toBeTruthy();
+ fireEvent.keyDown(window,{key:'[',ctrlKey:true});
+ expect(screen.getByRole('button',{name:'Expand sidebar'})).toBeTruthy();
+ fireEvent.keyDown(window,{key:'['});
+ expect(screen.getByRole('button',{name:'Collapse sidebar'})).toBeTruthy();
+ expect(localStorage.getItem('nospoilers.watch.sidebar-collapsed')).toBe('0');
+});

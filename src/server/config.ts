@@ -42,6 +42,8 @@ export type AppConfig = {
   processRole: ProcessRole;
   uiRoot: string;
   cronSecret: string;
+  /** Read attached delivery URLs again every hour. On unless DELIVERY_RECHECK is off. */
+  deliveryRecheck: boolean;
 };
 
 export type ProcessRole = "all" | "web" | "worker";
@@ -89,6 +91,11 @@ loadDotEnv();
 
 function env(name: string, fallback = ""): string {
   return process.env[name]?.trim() ?? fallback;
+}
+
+/** A switch that is on unless it is explicitly turned off. */
+export function switchedOn(raw: string | undefined): boolean {
+  return !["off", "false", "0", "no", "disabled"].includes((raw ?? "").trim().toLowerCase());
 }
 
 function envInt(name: string, fallback: number): number {
@@ -163,6 +170,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     processRole: parseProcessRole(env("NOSPOILERS_ROLE", "all")),
     uiRoot: env("NOSPOILERS_UI_ROOT", path.resolve("dist")),
     cronSecret: env("CRON_SECRET"),
+    deliveryRecheck: switchedOn(env("DELIVERY_RECHECK")),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;

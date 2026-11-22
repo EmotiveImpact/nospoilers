@@ -17,6 +17,13 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import type {Assessment} from '@/assurance/types';
 import type {ScanReport} from '@/scanner/types';
+import {buildCheckAreas} from '@/watch/release-pieces';
+import {CheckWheel} from '@/components/pieces/CheckWheel';
+import {ReceiptCheck} from '@/components/pieces/ReceiptCheck';
+import {useReceiptCheck} from '@/components/pieces/useReceiptCheck';
+import {ReleaseTrail} from './ReleaseTrail';
+
+const RELEASE_TABS=[['findings','Findings'],['files','Files'],['where','Where it went'],['history','History'],['proof','Proof']] as const;
 
 function receiptStatusLabel(release: ReleaseRevision) {
   if (release.receiptStatus === "passed") return "Scan passed";
@@ -70,15 +77,24 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
     watchHref,
     watchPath,
   } = useWatchScreenContext();
-  const [section,setSection]=useState('findings');
+  const [section,setSection]=useState(()=>new URLSearchParams(search).get('releaseTab')==='where'?'where':'findings');
   const [recordedReport,setRecordedReport]=useState<{releaseId:number;report:ScanReport|null}|null>(null);
   const onReport=useCallback((report:ScanReport|null)=>setRecordedReport({releaseId:release.id,report}),[release.id]);
-  const findingCount=recordedReport?.releaseId===release.id?recordedReport.report?.findings.length:undefined;
+  const report=recordedReport?.releaseId===release.id?recordedReport.report:null;
+  const findingCount=report?.findings.length;
   const revealSection=useCallback((next:string)=>{setSection(next==='controls'?'history':next);if(next==='controls')document.getElementById(`history-nav-release-${release.id}-decisions`)?.click();},[release.id]);
   const revealFix=useCallback(()=>{setSection('history');document.getElementById(`history-nav-release-${release.id}-remediation`)?.click();},[release.id]);
   const [observed,setObserved]=useState<{record:ReleaseRevision;assessment:Assessment|null}|null>(null);
   const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:release,assessment}),[release]);
   const brief = useMemo(() => buildReleaseBriefModel({...release,readiness:observed?.record===release?observed.assessment??undefined:release.readiness}), [release,observed]);
+  const deliveryTone=brief.steps.find(step=>step.key==='delivery')?.tone;
+  const areas=useMemo(()=>buildCheckAreas(report,{kind:'delivery',state:deliveryTone==='clean'?'passed':deliveryTone==='blocked'?'failed':null}),[report,deliveryTone]);
+  const receiptCheck=useReceiptCheck(section==='proof',`release-${release.id}`,async signal=>{
+    const response=await fetch(`/api/receipts/${release.receiptId}`,{signal});
+    if(!response.ok)return null;
+    const body=await response.json() as {receipt?:unknown};
+    return body.receipt?{receipt:body.receipt,sha256:release.artifactSha256}:null;
+  });
   const family = releaseFamily(release.coordinate);
   const history = releases.filter((row) => releaseFamily(row.coordinate) === family).slice(0, 5);
 
@@ -136,10 +152,11 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
       <ReleaseWorkspaceSummary findingCount={findingCount} title={brief.title} detail={brief.detail} tone={brief.status}
         scope="Artifact, source identity, delivery and approval are independent evidence. A saved scan alone does not establish release readiness."
         states={brief.steps.map(step=>({key:step.key,label:step.key==='artifact'?'Artifact inspection':step.key==='identity'?'Source identity':step.key==='delivery'?'Production delivery':'Release approval',status:step.status==='Not configured'?(step.key==='identity'?'No attestation recorded':step.key==='delivery'?'Not observed':step.key==='governance'?'No decision recorded':step.status):step.status,detail:step.evidence,tone:step.tone}))}/>
-      <div className="journey-release-tabs" role="tablist" aria-label="Release evidence sections" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>{['findings','files','history','proof'].map(tab=><button role="tab" id={`release-${release.id}-${tab}`} aria-controls={`release-${release.id}-section`} aria-selected={section===tab} tabIndex={section===tab?0:-1} key={tab} onClick={()=>setSection(tab)}>{tab.charAt(0).toUpperCase()+tab.slice(1)}{tab==='findings'&&findingCount!==undefined?<span className="connected-tab-count">{findingCount}</span>:null}</button>)}</div>
+      <div className="journey-release-tabs" role="tablist" aria-label="Release evidence sections" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>{RELEASE_TABS.map(([tab,label])=><button role="tab" id={`release-${release.id}-${tab}`} aria-controls={`release-${release.id}-section`} aria-selected={section===tab} tabIndex={section===tab?0:-1} key={tab} onClick={()=>setSection(tab)}>{label}{tab==='findings'&&findingCount!==undefined?<span className="connected-tab-count">{findingCount}</span>:null}</button>)}</div>
       <div role="tabpanel" id={`release-${release.id}-section`} aria-labelledby={`release-${release.id}-${section}`}>
+      <div hidden={section!=='where'}><ReleaseTrail releaseId={release.id} active={section==='where'} sourcesFoot={installAdmin?<>Add your CDN or download URL under <button type="button" className="release-trail-link" onClick={()=>revealSection('controls')}>Release controls</button> and it is tracked here.</>:'Workspace admins can attach delivery URLs to track here.'}/></div>
       <div hidden={section!=='proof'}>
-<div className="connected-proof-grid"><div className="connected-receipt-facts"><h2>Signed scan record</h2><p>The original record binds the saved outcome to these exact bytes. A valid signature does not mean the artifact passed.</p><dl><div><dt>Receipt status</dt><dd>{receiptStatusLabel(release)}</dd></div><div><dt>Media type</dt><dd>{release.mediaType??'Not recorded'}</dd></div><div><dt>Sealed size</dt><dd>{release.artifactBytes!=null?formatSealedBytes(release.artifactBytes):'Not recorded'}</dd></div><div className="connected-full-fact"><dt>Artifact SHA-256</dt><dd><code>{release.artifactSha256}</code></dd></div></dl>        <Button
+<div className="connected-proof-grid"><div className="connected-proof-checked"><h2 className="np-label">What was checked<span>{areas.length} areas · this release artifact</span></h2><CheckWheel areas={areas} total={findingCount??0} passed={release.receiptStatus==='passed'&&report!=null}/><p>An area is marked clear only when the completed check recorded nothing in it. Areas that were not observed stay open.</p></div><div className="connected-receipt-facts"><h2>Signed scan record</h2><p>The original record binds the saved outcome to these exact bytes. A valid signature does not mean the artifact passed.</p><dl><div><dt>Receipt status</dt><dd>{receiptStatusLabel(release)}</dd></div><div><dt>Media type</dt><dd>{release.mediaType??'Not recorded'}</dd></div><div><dt>Sealed size</dt><dd>{release.artifactBytes!=null?formatSealedBytes(release.artifactBytes):'Not recorded'}</dd></div><div className="connected-full-fact"><dt>Artifact SHA-256</dt><dd><code>{release.artifactSha256}</code></dd></div></dl>{receiptCheck?<ReceiptCheck fileName={`nospoilers-receipt-${release.receiptId}.json`} state={receiptCheck} result={`${receiptStatusLabel(release).toLowerCase()}${findingCount!==undefined?` · ${findingCount} finding${findingCount===1?'':'s'}`:''} · checked ${new Date(release.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})} UTC`}/>:null}        <Button
           type="button"
           variant="outline"
           onClick={downloadReceipt}
@@ -153,7 +170,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
               <ExternalLink className="size-5" aria-hidden />
               <h3>Public verification</h3>
               <p>{release.publicPage?.enabled ? `Published at ${release.publicPage.path}` : "Private · no active verification page for this receipt."}</p>
-              <p>Review the confirmation before publishing. Delivery matching is on demand, not scheduled verification.</p>
+              <p>Review the confirmation before publishing. Attached delivery URLs are tracked under Where it went.</p>
               {canPublishVerify?<ContextButton
                 type="button"
                 size="sm"
