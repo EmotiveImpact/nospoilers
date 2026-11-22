@@ -1,7 +1,7 @@
 import './design/release-journey.css';
 import { EvidenceTable } from './design/EvidenceTable';
 import {ChevronRight,ArrowRight,Download,FileCheck2,ShieldCheck,ExternalLink} from 'lucide-react';
-import {useCallback,useId,useRef,useState} from 'react';
+import {useCallback,useId,useMemo,useRef,useState} from 'react';
 import './release-responsive.css';
 import './design/release-check.css';
 import type {Assessment} from '@/assurance/types';
@@ -14,6 +14,11 @@ import {WorkspaceExceptionRequest} from './WorkspaceExceptionRequest';
 import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
 import {downloadUploadedRecord,findingCategory,uploadedReleaseDecision,type EvidenceCategory,type UploadedRelease} from '@/watch/uploaded-release';
+import {buildCheckAreas,buildFileMap,formatBytes} from '@/watch/release-pieces';
+import {FileMap,FileMapClear} from '@/components/pieces/FileMap';
+import {CheckWheel} from '@/components/pieces/CheckWheel';
+import {ReceiptCheck} from '@/components/pieces/ReceiptCheck';
+import {useReceiptCheck} from '@/components/pieces/useReceiptCheck';
 
 export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:UploadedRelease;search:string;onBack:()=>void;onNewScan:()=>void}){
   return <UploadedReleaseWorkspace key={upload.id} upload={upload} search={search} onBack={onBack} onNewScan={onNewScan}/>;
@@ -66,9 +71,15 @@ function UploadedReleaseWorkspace({upload,search,onBack,onNewScan}:{upload:Uploa
     return {key,label,status,detail:check?.detail??'A verified assessment is not available for this evidence. The saved job status alone does not establish a pass.',tone:state==='not-configured'&&key==='delivery'?'waiting':state};
   });
   const manifestFile=report?.manifest?.find(file=>file.path===inspectedFile);
+  const fileMap=useMemo(()=>buildFileMap(report),[report]);
+  const deliveryState=assessment?.checks.find(item=>item.id==='delivery')?.state;
+  const areas=useMemo(()=>buildCheckAreas(report,website?{kind:'website'}:{kind:'delivery',state:deliveryState}),[report,website,deliveryState]);
+  const scannedAt=new Date(upload.created_at);
+  const hasReceipt=upload.receipt_json!=null;
+  const receiptCheck=useReceiptCheck(view==='proof'&&hasReceipt,upload.id,async()=>({receipt:upload.receipt_json,sha256:upload.artifact_sha256||null}));
   const selectedGuidance=selected?.finding.rule==='MAP-001'?'Exclude this map from the release archive. Keep any private debugging copy outside the files sent to customers.':selected?.finding.rule==='MAP-003'?'Remove the sourceMappingURL reference from the release bundle and exclude public source maps. Scan the rebuilt archive to verify the change.':selected?.finding.rule==='MAP-002'?'Remove the embedded original source from the shipped map, or keep the map outside the released artifact. Verify the rebuilt bytes.':website?'Review the publicly served asset, address or explicitly assess the exposure, then run another website check from Coverage.':'Review this file in the release build, address or explicitly assess the exposure, then upload the rebuilt artifact.';
   return <section className="watch-release-brief upload-readiness release-workspace" aria-labelledby="uploaded-brief-title">
-    <header className="watch-release-heading journey-result-heading rc-heading"><div><p className="rc-crumb"><button type="button" className="rc-crumb-link" onClick={onBack} aria-label="All releases">Releases</button><i aria-hidden>/</i>{website?'Website check':'Uploaded artifact'}<i aria-hidden>/</i><b>{upload.target}</b></p><h1 id="uploaded-brief-title">Release check.</h1><p className="rc-stat"><i className={`is-${decision.tone}`} aria-hidden/>{report?`${findings.length} finding${findings.length===1?'':'s'} ${decision.tone==='ready'?'recorded':'need review'} · read ${report.fileCount.toLocaleString()} files`:<span>Inspection not completed</span>}<span>· {new Date(upload.created_at).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></p></div><div className="rc-actions">{upload.receipt_json!=null?<Button variant="outline" onClick={()=>downloadUploadedRecord(upload)}><Download className="size-4" aria-hidden/>Receipt JSON</Button>:null}</div></header>
+    <header className="watch-release-heading journey-result-heading rc-heading"><div><p className="rc-crumb"><button type="button" className="rc-crumb-link" onClick={onBack} aria-label="All releases">Releases</button><i aria-hidden>/</i>{website?'Website check':'Uploaded artifact'}<i aria-hidden>/</i><b>{upload.target}</b></p><h1 id="uploaded-brief-title">Release check</h1><p className="rc-stat"><i className={`is-${decision.tone}`} aria-hidden/>{report?`${findings.length} finding${findings.length===1?'':'s'} ${decision.tone==='ready'?'recorded':'need review'} · read ${report.fileCount.toLocaleString()} files`:<span>Inspection not completed</span>}<span>· {new Date(upload.created_at).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></p></div><div className="rc-actions">{upload.receipt_json!=null?<Button variant="outline" onClick={()=>downloadUploadedRecord(upload)}><Download className="size-4" aria-hidden/>Receipt JSON</Button>:null}</div></header>
     <ReleaseWorkspaceSummary title={decision.title} detail={decision.detail} tone={decision.tone} findingCount={report?findings.length:undefined} states={states} scope={website?'Evidence covers the public assets retrieved in this bounded website check. It does not prove build-to-production parity.':'Artifact evidence only. Source identity, production delivery and release approval are separate checks.'}/>
     <nav aria-label="In this release" className="journey-release-tabs" role="tablist" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>
       {(['findings','files','history','proof'] as const).map(tab=><button key={tab} role="tab" id={`${categoryId}-view-${tab}`} aria-controls={`${categoryId}-view-panel`} aria-selected={view===tab} tabIndex={view===tab?0:-1} onClick={()=>setView(tab)}>{tab==='findings'?`Findings ${findings.length}`:tab==='files'?'Files':tab==='history'?'History':'Proof'}</button>)}
@@ -76,7 +87,7 @@ function UploadedReleaseWorkspace({upload,search,onBack,onNewScan}:{upload:Uploa
     <div role="tabpanel" id={`${categoryId}-view-panel`} aria-labelledby={`${categoryId}-view-${view}`}>
     <div hidden={view!=='findings'}>
     <section className="upload-evidence" aria-labelledby="upload-evidence-title">
-
+      {fileMap&&report?<FileMap model={fileMap} selectedPath={selected?.finding.path} onSelect={index=>{const next=new URLSearchParams(search);next.set('uploadFinding',String(index));next.delete('uploadTab');navigate(`/watch/releases?${next}`);}} facts={[{label:'Source',value:website?'Website check':'Uploaded artifact'},{label:'Files',value:report.fileCount.toLocaleString()},...(report.artifactBytes!=null?[{label:'Size',value:formatBytes(report.artifactBytes)}]:[]),{label:'Scanned',value:scannedAt.toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}]}/>:null}
       {showCategories?<div className="upload-evidence-tabs" role="tablist" aria-label="Finding category">
         {availableCategories.map(([id,label])=><button type="button" key={id} id={`${categoryId}-${id}`} role="tab" aria-controls={`${categoryId}-panel`} aria-selected={category===id} tabIndex={category===id?0:-1} onClick={()=>choose('uploadTab',id)} onKeyDown={event=>{
           if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
@@ -95,6 +106,7 @@ function UploadedReleaseWorkspace({upload,search,onBack,onNewScan}:{upload:Uploa
           {upload.workspace_id&&upload.status==='done'?<WorkspaceExceptionRequest workspaceId={upload.workspace_id} attemptId={upload.id} findingIndex={selected.index} website={website}/>:null}
         </>:<><h3>{selectedParam!==null?'Finding unavailable in this view':report&&findings.length===0?'No findings to review':'Select a finding'}</h3><p>{selectedParam!==null?'Choose a recorded finding from this release.':report&&findings.length===0?decision.tone==='ready'?'No unsuppressed findings were recorded in this completed check. Its decision applies only to the recorded scope.':'No findings were recorded. This does not establish a passing decision; review the check status and limitations.':'Details, the affected file and the next step appear here. No evidence is invented for an empty result.'}</p></>}
       </aside></div>
+      {fileMap&&category==='all'?<FileMapClear model={fileMap}/>:null}
     </section>
     </div><div hidden={view!=='files'}>
     <section ref={artifactDetails} tabIndex={-1} className="upload-record-details" aria-label="Artifact record">
@@ -107,9 +119,11 @@ function UploadedReleaseWorkspace({upload,search,onBack,onNewScan}:{upload:Uploa
     {report?<section aria-label="Release tools" className="journey-history-tools"><h2 ref={toolsHeading} tabIndex={-1} className="sr-only">Release tools</h2><ReleaseAssurancePanel kind="upload" recordId={upload.id} evidenceId="upload-evidence-title" onReveal={()=>setView('findings')} onAssessment={onAssessment}/></section>:<p>No completed scan evidence is available for release history yet.</p>}
     </div><div hidden={view!=='proof'}>
     <section ref={proofSection} tabIndex={-1} aria-label="Release proof" className="upload-proof-note journey-proof">
+      <div className="journey-proof-checked"><h2 className="np-label">What was checked<span>{areas.length} areas · {website?'public website assets':'this artifact'}</span></h2><CheckWheel areas={areas} total={findings.length} passed={decision.tone==='ready'}/><p>An area is marked clear only when the completed check recorded nothing in it. Areas that were not observed stay open.</p></div>
       <div className="journey-proof-receipt">
         <header className="journey-proof-header"><span className="journey-proof-icon"><FileCheck2 aria-hidden/></span><div><h2>Signed scan record</h2><p>The saved decision, bound to this exact artifact.</p></div></header>
         <dl className="release-receipt-facts"><div><dt>Recorded outcome</dt><dd>{report?.status??'Not available'}</dd></div><div><dt>Highest severity</dt><dd>{findings.some(({finding})=>finding.severity==='critical')?'Critical':findings.length?'Warning':report?'None recorded':'Unknown'}</dd></div><div><dt>Artifact identity</dt><dd><code>{upload.artifact_sha256||'Not recorded'}</code></dd></div></dl>
+        {hasReceipt&&receiptCheck?<ReceiptCheck fileName={`nospoilers-proof-${upload.id}.json`} state={receiptCheck} result={report?`${findings.length} finding${findings.length===1?'':'s'} · checked ${scannedAt.toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})} UTC`:'no completed check'}/>:null}
         <div className="journey-proof-actions">{upload.receipt_json!=null?<><Button variant="outline" onClick={()=>downloadUploadedRecord(upload)}><Download className="size-4" aria-hidden/>Signed scan record</Button><Button variant="outline" onClick={verifyRecord}><ShieldCheck className="size-4" aria-hidden/>Verify a downloaded record</Button></>:null}</div>
         <p>A valid signature does not mean the artifact passed. Downloading the record does not publish a public verification page.</p>
         {upload.receipt_json!=null?<p className="journey-proof-caution">The downloaded JSON may contain file names and evidence metadata; review it before sharing.</p>:null}

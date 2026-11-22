@@ -167,3 +167,25 @@
   .watch-desk .release-workspace.release-workspace .upload-finding-list > button > .upload-severity { grid-column: 1 / -1; }
   .watch-desk .release-workspace.release-workspace .upload-finding-list > button > span:not(.upload-severity) { grid-column: 1; min-width: 0; }
 }
+
+/* ---- pieces from the homepage preview: file map on Findings, areas and receipt check on Proof ---- */
+.watch-desk .release-workspace.release-workspace .np-filemap { margin: 4px 0 18px; }
+.watch-desk .release-workspace.release-workspace .journey-proof { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.watch-desk .release-workspace.release-workspace .journey-proof > .proof-sharing { grid-column: 1 / -1; border-left: 0; padding: 0; }
+.watch-desk .release-workspace.release-workspace .journey-proof-checked { min-width: 0; }
+.watch-desk .release-workspace.release-workspace .journey-proof-checked > p { margin: 10px 0 0; font-size: 12px; color: #81858e; }
+.watch-desk .release-workspace.release-workspace .journey-proof .np-term { margin: 16px 0 0; }
+.watch-desk .release-workspace.release-workspace .journey-proof h2.np-label { margin: 0 0 8px; font-size: 11px; font-weight: 500; letter-spacing: .09em; color: #81858e; }
+@media (max-width: 1050px) {
+  .watch-desk .release-workspace.release-workspace .journey-proof { grid-template-columns: minmax(0, 1fr); }
+}
+.watch-desk .connected-proof-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.watch-desk .connected-proof-grid .connected-public-proof:not(:empty) { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
+.watch-desk .connected-proof-checked { min-width: 0; }
+.watch-desk .connected-proof-checked > p { margin: 10px 0 0; font-size: 12px; color: #81858e; }
+.watch-desk .connected-proof-checked h2.np-label { margin: 0 0 8px; font-size: 11px; font-weight: 500; letter-spacing: .09em; color: #81858e; }
+.watch-desk .connected-receipt-facts .np-term { margin: 0 0 18px; }
+.watch-desk .hosted-release-evidence .np-filemap { margin: 4px 0 18px; }
+@media (max-width: 1050px) {
+  .watch-desk .connected-proof-grid { grid-template-columns: minmax(0, 1fr); }
+}

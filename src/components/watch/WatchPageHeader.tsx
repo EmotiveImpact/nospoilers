@@ -20,7 +20,7 @@ export function WatchPageHeader({
     <div className={narrow ? "watch-between watch-narrow" : "watch-between"}>
       <div className="min-w-0">
         {kicker ? <p className="watch-kicker">{kicker}</p> : null}
-        <h1 className="watch-page-title">{title}</h1>
+        <h1 className="watch-page-title">{title.replace(/\.$/, "")}</h1>
         {status ? <p className="watch-page-status"><i className={`watch-rail-dot is-${status.tone}`} aria-hidden />{status.text}</p> : null}
         {lede ? <p className="watch-page-lede">{lede}</p> : null}
       </div>

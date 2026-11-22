@@ -1,0 +1,90 @@
+/* Release pieces shared by the Watch app and the homepage preview.
+   Self-contained tokens, so a piece looks the same wherever it is mounted.
+   Class names use the np- prefix and avoid the -panel, -card and -row endings that the
+   app's borderless layer restyles wholesale. */
+.np {
+  --np-surface: #0c0c0d;
+  --np-fill: #101012;
+  --np-raised: #18181b;
+  --np-tile: #151517;
+  --np-line: rgba(255, 255, 255, .07);
+  --np-t1: #f4f5f6;
+  --np-t2: #a3a7af;
+  --np-t3: #81858e;
+  --np-red: #ff2d47;
+  --np-red-text: #ff6a7c;
+  --np-red-wash: rgba(255, 45, 71, .1);
+  --np-amber: #f2a33a;
+  --np-green: #4cc38a;
+  --np-green-text: #7fd6aa;
+  --np-green-wash: rgba(76, 195, 138, .08);
+  --np-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  color: var(--np-t1);
+  font-size: 13px;
+  line-height: 1.45;
+  container-type: inline-size;
+}
+.np *, .np *::before, .np *::after { box-sizing: border-box; }
+.np-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 8px; font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--np-t3); }
+.np-label span { letter-spacing: 0; text-transform: none; font-size: 11.5px; font-weight: 400; }
+
+/* ---- file map ---- */
+.np-filemap-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 28px; align-items: start; padding: 16px 18px; border-radius: 12px; background: var(--np-surface); }
+.np-fgrid { display: grid; grid-template-columns: repeat(36, minmax(0, 1fr)); gap: 3px; }
+.np-fgrid.is-few { grid-template-columns: repeat(auto-fill, 26px); gap: 4px; }
+.np-ft { display: block; aspect-ratio: 1; border: 0; border-radius: 2.5px; background: var(--np-tile); padding: 0; margin: 0; min-width: 0; appearance: none; }
+button.np-ft { cursor: pointer; }
+.np-ft.is-critical { background: var(--np-red); box-shadow: 0 0 10px rgba(255, 45, 71, .55); }
+.np-ft.is-warn { background: var(--np-amber); box-shadow: 0 0 9px rgba(242, 163, 58, .45); }
+.np-ft[aria-pressed="true"] { outline: 2px solid rgba(255, 255, 255, .8); outline-offset: 2px; }
+button.np-ft:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.np-fkey { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin-top: 12px; font: 11.5px var(--np-mono); color: var(--np-t2); }
+.np-fkey span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.np-fkey i { flex: none; width: 7px; height: 7px; border-radius: 2px; background: var(--np-t3); }
+.np-fkey i.is-critical { background: var(--np-red); }
+.np-fkey i.is-warn { background: var(--np-amber); }
+.np-fkey em { margin-left: auto; font-style: normal; color: var(--np-t3); }
+.np-facts { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px 10px; margin: 0; }
+.np-facts dt { color: var(--np-t3); }
+.np-facts dd { margin: 0; color: var(--np-t1); overflow-wrap: anywhere; }
+.np-okline { display: flex; align-items: center; gap: 9px; margin: 10px 0 0; padding: 11px 14px; border-radius: 9px; background: var(--np-green-wash); color: var(--np-t2); }
+.np-okline svg { flex: none; width: 14px; height: 14px; color: var(--np-green); }
+.np-okline em { margin-left: auto; font: 12px var(--np-mono); font-style: normal; color: var(--np-t2); }
+
+/* ---- the areas a check covers ---- */
+.np-wheelbox { border-radius: 12px; background: var(--np-surface); padding: 10px 12px; }
+.np-wheel { display: block; width: 100%; height: auto; }
+.np-wheel .np-nn { font: 500 12px var(--font-ui, inherit); fill: var(--np-t1); }
+.np-wheel .np-ns { font: 11px var(--font-ui, inherit); fill: var(--np-t3); }
+.np-wheel .np-ns.is-critical { fill: var(--np-red-text); }
+.np-wheel .np-ns.is-warn { fill: var(--np-amber); }
+.np-wheel .np-wc { font: 600 15px var(--font-ui, inherit); fill: var(--np-red-text); }
+.np-wheel .np-wc.is-quiet { fill: var(--np-t2); }
+.np-areas { display: none; list-style: none; margin: 0; padding: 4px 2px; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.np-areas li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; }
+.np-areas i { width: 7px; height: 7px; border-radius: 50%; background: var(--np-green); }
+.np-areas i.is-critical { background: var(--np-red); }
+.np-areas i.is-warn { background: var(--np-amber); }
+.np-areas i.is-unchecked { background: transparent; box-shadow: inset 0 0 0 1.4px var(--np-t3); }
+.np-areas b { font-weight: 500; font-size: 13px; }
+.np-areas span { grid-column: 2; font-size: 12px; color: var(--np-t3); overflow-wrap: anywhere; }
+.np-areas span.is-critical { color: var(--np-red-text); }
+.np-areas span.is-warn { color: var(--np-amber); }
+
+/* ---- receipt check ---- */
+.np-term { margin: 0; padding: 14px 16px; border-radius: 10px; background: #050506; font: 12px/1.9 var(--np-mono); color: var(--np-t2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.np-term .np-prompt { color: var(--np-t3); }
+.np-term .is-pass { color: var(--np-green-text); }
+.np-term .is-fail { color: var(--np-red-text); }
+.np-term .is-dim { color: var(--np-t3); }
+
+@container (max-width: 700px) {
+  .np-filemap-body { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .np-fgrid { grid-template-columns: repeat(18, minmax(0, 1fr)); }
+  .np-fkey em { margin-left: 0; width: 100%; }
+}
+@container (max-width: 460px) {
+  .np-wheel { display: none; }
+  .np-areas { display: grid; }
+  .np-wheelbox { padding: 14px; }
+}
