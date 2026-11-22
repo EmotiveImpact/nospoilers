@@ -414,7 +414,7 @@ export function WatchAlertsWorkspace({
                         ))
                       ) : (
                         <>
-                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
+                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational ? "Repository not recorded" : (Object.hasOwn(kindExplanations,selected.kind)?kindExplanations[selected.kind].title:selected.kind))}</div>
                           {selectedRow.operational ? (
                             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-dim">
                               <span>Technical check</span>

@@ -8,7 +8,9 @@ import {
 } from "./siem.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { ReleaseRevisionRow, Store } from "./store.ts";
-import { releaseFamily } from "../watch/release-brief.ts";
+import { artifactLine } from "../watch/release-trail.ts";
+
+export { artifactLine };
 
 export const MAX_DELIVERY_LOCATIONS_PER_REVISION = 5;
 export const MAX_DELIVERY_LOCATIONS_PER_INSTALL = 20;
@@ -377,12 +379,6 @@ export async function runDeliveryRecheckPoll(deps: {
     if (result.inserted) queued += 1;
   }
   return { queued };
-}
-
-/** The same package, or the same named asset of the same repository, across versions. */
-export function artifactLine(coordinate: string): string {
-  const hash = coordinate.indexOf("#");
-  return `${releaseFamily(coordinate)}#${hash >= 0 ? coordinate.slice(hash + 1) : ""}`;
 }
 
 /** Later revisions of the same artifact line that passed policy, oldest first. */

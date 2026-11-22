@@ -87,7 +87,7 @@ async function setup() {
     });
     return ((await attached.json()) as { location: { id: number } }).location.id;
   };
-  return { sql, store, seal, attach };
+  return { sql, store, seal, attach, app, cookie };
 }
 
 describe("artifact line", () => {
@@ -188,6 +188,53 @@ describe("hourly delivery recheck", () => {
       await runDeliveryVerifyJob({ store, notifier: createLogNotifier(store), installationId: 7, locationId: location, revisionId: release, scheduled: true, fetch: bytesFetch(clean), lookup: publicLookup });
       const { rows } = await sql.query(`SELECT id FROM alerts WHERE kind LIKE 'delivery_%'`);
       expect(rows).toHaveLength(0);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("where it went", () => {
+  it("returns the recorded trail of a blocked release to workspace members only", async () => {
+    const { sql, store, seal, attach, app, cookie } = await setup();
+    try {
+      const dirty = await readFile(DIRTY);
+      const clean = await readFile(CLEAN);
+      const exposed = await seal(dirty);
+      const location = await attach(exposed, "https://cdn.example.com/app.tgz?token=secret");
+      const notifier = createLogNotifier(store);
+      const read = (body: Buffer) =>
+        runDeliveryVerifyJob({ store, notifier, installationId: 7, locationId: location, revisionId: exposed, scheduled: true, fetch: bytesFetch(body), lookup: publicLookup });
+      await read(dirty);
+      const fixed = await seal(clean);
+      await read(dirty);
+
+      expect((await app.request(`/api/releases/${exposed}/trail`)).status).toBe(401);
+      const response = await app.request(`/api/releases/${exposed}/trail`, { headers: { cookie } });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      const { trail } = (await response.json()) as { trail: import("../src/watch/release-trail.ts").ReleaseTrailModel };
+      expect(trail.release).toMatchObject({ id: exposed, status: "failed" });
+      expect(trail.fix?.id).toBe(fixed);
+      expect(trail.sources).toHaveLength(1);
+      expect(trail.sources[0]).toMatchObject({ kind: "copy", scope: "release", name: "cdn.example.com", state: "exposed", label: "Still serving this build" });
+      expect(trail.sources[0].cells.at(-1)).toBe("exposed");
+      expect(trail.summary).toMatchObject({ tone: "bad", headline: "1 source is still serving this build", copies: 1 });
+      expect(trail.alerts.some((alert) => alert.title.includes("still serves"))).toBe(true);
+      expect(trail.events.some((event) => event.text.startsWith("Alert sent:"))).toBe(true);
+      expect(JSON.stringify(trail)).not.toContain("secret");
+
+      await read(clean);
+      const cleared = (await (await app.request(`/api/releases/${exposed}/trail`, { headers: { cookie } })).json()) as {
+        trail: import("../src/watch/release-trail.ts").ReleaseTrailModel;
+      };
+      expect(cleared.trail.sources[0]).toMatchObject({ state: "clear" });
+      expect(cleared.trail.summary).toMatchObject({ tone: "good", headline: "No source serves this build" });
+
+      await store.upsertUser({ id: "u2", login: "outsider" });
+      const outsider = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      expect((await app.request(`/api/releases/${exposed}/trail`, { headers: { cookie: outsider } })).status).toBe(404);
+      expect((await app.request(`/api/releases/not-a-number/trail`, { headers: { cookie } })).status).toBe(404);
     } finally {
       await sql.close();
     }

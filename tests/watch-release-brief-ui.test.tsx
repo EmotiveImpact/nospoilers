@@ -19,7 +19,7 @@ it('does not turn a saved passing receipt into unverified identity, delivery or 
   expect(within(within(states).getByRole('group',{name,exact:true})).getByText('Unknown')).toBeTruthy();
  }
  expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy();
- for(const name of ['Findings','Files','History','Proof'])expect(screen.getByRole('tab',{name})).toBeTruthy();
+ for(const name of ['Findings','Files','Where it went','History','Proof'])expect(screen.getByRole('tab',{name})).toBeTruthy();
 });
 
 it('opens receipt verification with workspace scope and clears the selected release',()=>{
@@ -39,7 +39,7 @@ it.each([false,true])('requests explicit confirmation for a connected public pag
  const confirm=vi.fn();
  render(<HostedBriefFixture mode="brief" canPublish published={published} onConfirm={confirm}/>);
  fireEvent.click(screen.getByRole('tab',{name:'Proof'}));
- expect(screen.getByText(/Delivery matching is on demand, not scheduled verification/)).toBeTruthy();
+ expect(screen.getByText(/Attached delivery URLs are rechecked every hour for 30 days after the release/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:published?'Unpublish verification':'Publish verification'}));
  expect(confirm).toHaveBeenCalledWith({kind:published?'release-unpublish':'release-publish',id:1,expected:'npm:@example/long-release-package-name@2.0.0'});
  expect(fetcher.mock.calls.every(([,init])=>!(init as RequestInit|undefined)?.method)).toBe(true);
@@ -51,4 +51,17 @@ it('hides connected publication controls without publication authority',()=>{
  fireEvent.click(screen.getByRole('tab',{name:'Proof'}));
  expect(screen.queryByRole('button',{name:'Publish verification'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Unpublish verification'})).toBeNull();
+});
+
+it('loads where the release went only when that section is opened',async()=>{
+ const fetcher=vi.fn((url:unknown)=>String(url).endsWith('/trail')
+  ?Promise.resolve(new Response(JSON.stringify({error:'Unknown release.'}),{status:404}))
+  :new Promise<Response>(()=>{}));
+ vi.stubGlobal('fetch',fetcher);
+ render(<HostedBriefFixture mode="brief"/>);
+ expect(fetcher.mock.calls.some(([url])=>String(url).endsWith('/trail'))).toBe(false);
+ fireEvent.click(screen.getByRole('tab',{name:'Where it went'}));
+ expect(screen.getByRole('tab',{name:'Where it went'}).getAttribute('aria-selected')).toBe('true');
+ expect((await screen.findByRole('alert')).textContent).toBe('Unknown release.');
+ expect(fetcher.mock.calls.filter(([url])=>String(url)==='/api/releases/1/trail')).toHaveLength(1);
 });

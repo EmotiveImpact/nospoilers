@@ -7873,6 +7873,34 @@ export function createStore(
       return rows.length > 0;
     },
 
+    /** Alerts the scan producer linked to this release revision, oldest first. */
+    async listAlertsForRevision(
+      revisionId: number,
+    ): Promise<{ id: number; title: string; created_at: string; resolved_at: string | null }[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        title: string;
+        created_at: string | Date;
+        resolved_at: string | Date | null;
+      }>(
+        `SELECT a.id, a.title, a.created_at, a.resolved_at
+         FROM alert_release_links l
+         JOIN alerts a ON a.id = l.alert_id
+         JOIN release_revisions r ON r.id = l.revision_id AND r.installation_id = a.installation_id
+         WHERE l.revision_id = $1
+           AND row_within_retention(a.installation_id, a.created_at)
+         ORDER BY a.id ASC
+         LIMIT 20`,
+        [revisionId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        title: row.title,
+        created_at: iso(row.created_at) ?? "",
+        resolved_at: iso(row.resolved_at),
+      }));
+    },
+
     async listDeliveryAttacherLogins(revisionId: number): Promise<string[]> {
       const { rows } = await sql.query<{ created_by_login: string }>(
         `SELECT DISTINCT created_by_login
