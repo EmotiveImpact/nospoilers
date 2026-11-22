@@ -102,7 +102,7 @@ for(let hour=7;hour>=1;hour-=1){
  const served=(body:Buffer|null)=>(async()=>new Response(body,{status:body?200:404,headers:{'content-type':'application/gzip'}})) as unknown as typeof fetch;
  const lookup=async()=>[{address:'93.184.216.34',family:4}];
  for(const [locationId,body] of [[trailCdn,dirtyBytes],[trailRegistry,null],[trailDownloads,cleanBytes]] as const)
-  await runDeliveryVerifyJob({store,notifier:createLogNotifier(store),installationId:9902,locationId,revisionId:trailBlocked,scheduled:true,fetch:served(body),lookup});
+  await runDeliveryVerifyJob({store,notifier:createLogNotifier(store),installationId:9902,locationId,revisionId:trailBlocked,scheduled:true,hourlyRecheck:loadConfig().deliveryRecheck,fetch:served(body),lookup});
 }
 const website=await createWorkspaceOrigin(sql,'qa-owner',workspace.id,'https://qa-fixture.example.com');
 await sql.query("UPDATE watched_origins SET verified_at=now(),last_checked_at=now(),last_scan_status='failed-policy' WHERE id=$1",[website.id]);
