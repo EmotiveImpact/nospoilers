@@ -7,7 +7,8 @@ import {
   type WebhookHostLookup,
 } from "./siem.ts";
 import type { AlertNotifier } from "./notifier.ts";
-import type { Store } from "./store.ts";
+import type { ReleaseRevisionRow, Store } from "./store.ts";
+import { releaseFamily } from "../watch/release-brief.ts";
 
 export const MAX_DELIVERY_LOCATIONS_PER_REVISION = 5;
 export const MAX_DELIVERY_LOCATIONS_PER_INSTALL = 20;
@@ -28,6 +29,8 @@ const HOST_RE =
 const MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$/;
 
 export const DELIVERY_VERIFY_KIND = "delivery_verify";
+/** Attached delivery URLs are rechecked every hour for this long after their release was recorded. */
+export const DELIVERY_RECHECK_WINDOW_DAYS = 30;
 
 export type DeliveryUrl = {
   url: string;
@@ -334,6 +337,70 @@ export async function enqueueDeliveryVerify(
   return { queued: result.inserted };
 }
 
+export function deliveryRecheckDeliveryId(locationId: number, hour: string): string {
+  return `delivery-recheck:${locationId}:hour:${hour}`;
+}
+
+/**
+ * Hourly: queue one check for every delivery URL attached to a recently recorded release, so the
+ * history shows when a copy stopped (or kept) serving the recorded bytes. At most one per URL per hour.
+ */
+export async function runDeliveryRecheckPoll(deps: {
+  store: Store;
+  now?: () => Date;
+}): Promise<{ queued: number }> {
+  const now = deps.now?.() ?? new Date();
+  const since = new Date(now.getTime() - DELIVERY_RECHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const hour = now.toISOString().slice(0, 13);
+  const locations = await deps.store.listDeliveryLocationsForRecheck(since.toISOString());
+  const allowed = new Map<number, boolean>();
+  let queued = 0;
+  for (const location of locations) {
+    let ok = allowed.get(location.installation_id);
+    if (ok === undefined) {
+      ok = await deps.store.installationWorkAllowed(location.installation_id);
+      allowed.set(location.installation_id, ok);
+    }
+    if (!ok) continue;
+    const result = await deps.store.enqueueJob({
+      deliveryId: deliveryRecheckDeliveryId(location.id, hour),
+      installationId: location.installation_id,
+      priority: "light",
+      kind: DELIVERY_VERIFY_KIND,
+      payload: {
+        installationId: location.installation_id,
+        locationId: location.id,
+        revisionId: location.revision_id,
+        reason: "poll",
+      },
+    });
+    if (result.inserted) queued += 1;
+  }
+  return { queued };
+}
+
+/** The same package, or the same named asset of the same repository, across versions. */
+export function artifactLine(coordinate: string): string {
+  const hash = coordinate.indexOf("#");
+  return `${releaseFamily(coordinate)}#${hash >= 0 ? coordinate.slice(hash + 1) : ""}`;
+}
+
+/** Later revisions of the same artifact line that passed policy, oldest first. */
+export function passedSuccessors(
+  revision: ReleaseRevisionRow,
+  lineage: ReleaseRevisionRow[],
+): ReleaseRevisionRow[] {
+  const line = artifactLine(revision.coordinate);
+  return lineage.filter(
+    (row) =>
+      row.id !== revision.id &&
+      row.receipt_status === "passed" &&
+      artifactLine(row.coordinate) === line &&
+      (row.created_at > revision.created_at ||
+        (row.created_at === revision.created_at && row.id > revision.id)),
+  );
+}
+
 export async function verifyDeliveryUrl(input: {
   url: string;
   expectedSha256: string;
@@ -509,6 +576,8 @@ export async function runDeliveryVerifyJob(input: {
   locationId: number;
   revisionId: number;
   githubDeliveryId?: string | null;
+  /** True for the hourly recheck: an unchanged observation is recorded but not announced again. */
+  scheduled?: boolean;
   maxBytes?: number;
   fetch?: typeof fetch;
   lookup?: WebhookHostLookup;
@@ -544,10 +613,49 @@ export async function runDeliveryVerifyJob(input: {
     deliveryRegion: result.deliveryRegion,
     error: result.error,
   });
-  if (result.status === "matched" || result.status === "blocked" || result.status === "error") {
+  if (result.status === "blocked" || result.status === "error") return;
+  const redacted = redactDeliveryUrl(location.url);
+  // Only a release that did not pass has a "fix" to wait for.
+  const fixed =
+    revision.receipt_status === "failed-policy"
+      ? passedSuccessors(revision, await input.store.listReleaseLineage(revision.id))
+      : [];
+  if (result.status === "matched") {
+    const successor = fixed[0];
+    if (!successor) return;
+    // A later release of this artifact passed, yet this URL still serves the bytes that did not.
+    const dedupe = `delivery_still_exposed:${location.id}:${successor.id}`;
+    if (await input.store.alertExistsForDeliveryId(dedupe)) return;
+    await input.notifier.send({
+      installationId: location.installation_id,
+      repoId: revision.repo_id,
+      repoFullName: null,
+      kind: "delivery_still_exposed",
+      title: `${location.host} still serves ${revision.coordinate} after the fix`,
+      body: `${redacted} still serves the bytes recorded for ${revision.coordinate} (SHA-256 ${revision.artifact_sha256}), which did not pass policy. ${successor.coordinate} passed on ${successor.created_at.slice(0, 10)}. Replace or remove the copy at this URL; it is rechecked every hour. Bytes were hashed in transit and not stored. This is a delivery fact, not a compromise claim.`,
+      githubDeliveryId: dedupe,
+      releaseRevisionIds: [revision.id, successor.id],
+    });
     return;
   }
-  const redacted = redactDeliveryUrl(location.url);
+  // The hourly recheck repeats; only a changed observation is news.
+  if (
+    input.scheduled &&
+    previous &&
+    previous.status === result.status &&
+    previous.observed_sha256 === result.observedSha256 &&
+    previous.final_host === result.finalHost
+  ) {
+    return;
+  }
+  // The URL now serves a later release that passed: the fix has reached this copy.
+  if (
+    result.status === "mismatch" &&
+    result.observedSha256 &&
+    fixed.some((row) => row.artifact_sha256 === result.observedSha256)
+  ) {
+    return;
+  }
   const alert = alertForVerify(result, {
     coordinate: revision.coordinate,
     expectedSha256: revision.artifact_sha256,

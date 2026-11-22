@@ -670,7 +670,9 @@ export async function handleJob(
       installationId,
       locationId,
       revisionId,
-      githubDeliveryId: deliveryId,
+      // The hourly recheck has a fresh job id every hour; its alerts key on the observed state instead.
+      githubDeliveryId: payload.reason === "poll" ? null : deliveryId,
+      scheduled: payload.reason === "poll",
       maxBytes: deps.maxAssetBytes,
       fetch: deps.webFetch,
       lookup: deps.webLookup,
