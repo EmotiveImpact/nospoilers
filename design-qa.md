@@ -64,6 +64,20 @@ Passed for this implementation milestone. The approved journey structure is pres
 
 ---
 
+# App screens from the homepage preview, 22 November 2026
+
+The owner approved a mock of the homepage preview built as real Watch screens ("this is the application.... yes! build this") and asked for the preview to then be the application itself. This section records what was looked at. It is local evidence on a seeded test workspace, not production or customer acceptance.
+
+- Signed-in app: production bundle served by `scripts/gate-b-browser-fixture.ts` (ephemeral in-memory database, network disabled, no workers), Chromium at 1440 CSS pixels wide, device scale 2. The fixture now packs and really scans two 213-file archives for its `qa-trail-cli` releases so the file map is shown at a realistic size.
+- Release check, Findings tab of the blocked `npm:qa-trail-cli@2.4.1`: 213 tiles, 2 lit (`index.js`, `index.js.map`), facts read tarball, 213 files, 4.5 KB, and the line beneath reads **Checked, nothing found · 211 files**. Choosing a lit tile selects its finding. The finding panel leads with the path; its "Affected file" label was left visible with nothing under it by the earlier borderless pass and is now kept for screen readers only, and the severity is a chip again instead of a full-width bar.
+- Proof tab: eight areas, Source maps red with 3 findings, Live sites red with **Delivery differs**, Inventory **213 files hashed**, the rest clear, 3 in the centre. The receipt check printed `Receipt passed · SHA-256 matches` and `result: blocked · 3 findings` from the server's verification of receipt 5.
+- Where it went tab: the source map shows the registry and one download host cleared and `cdn.qa-fixture.example.com` still serving, with the verified website as watched context. When found and Now switch the same picture between the first and latest reads. After the fix shows 2.3.2, 2.4.0, 2.4.1 (blocked) and 2.4.2 (fix passed), three rows of hourly cells, the verdict line and What happened in order.
+- Alert "cdn.qa-fixture.example.com still serves npm:qa-trail-cli@2.4.1 after the fix": carries the same After the fix block and an **Open Where it went** link. The queue shows it with a High chip, as it does the other delivery alerts.
+- Coverage: opening the `qa-trail-cli` source offers **Where it went**, which opens that tab on the source's latest release (2.4.2). That release has no tracked copy in the fixture, so the tab shows its empty state, **Not tracked yet · no copy of this release is being tracked**, with the verified website as watched context.
+- Homepage at 1440x900 and 390x844: all four steps are reached by scrolling and by choosing a step, the step holds without scrolling, no page errors, no sideways scroll. Inspect sweeps over the app's file map (214 tiles for 1,283 files, 3 lit) and reveals each finding as the sweep passes its file. Trace, Watch and Prove draw the app's source map and list, After the fix, the eight areas and the receipt check from the Acme example. On the phone the file map uses 27 columns so all three findings stay inside the frame.
+- Browser console: no errors on any of these screens.
+- Not checked: the live site and live app, real customer data, Safari and Firefox, a screen reader, 200% zoom, and a real hourly read against a real registry or CDN (the fixture seeds recorded reads; the worker path is covered by tests with an injected transport).
+
 # Homepage follow-ups, 21 November 2026
 
 The owner asked for Start a scan to go red on hover and for the repository link to go. After seeing the headline levelled with the copy beside it, the owner asked for a bigger explanation and for the whole hero top to be centred.
