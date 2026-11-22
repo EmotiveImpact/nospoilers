@@ -115,6 +115,12 @@ behind by a crash; it is not the normal pickup path. Failed jobs retry with back
 attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
 visibility backstop that catches a missed webhook.
 
+The same hourly tick reads each release's published URL and attached delivery URLs again for 30
+days after the release. `DELIVERY_RECHECK=off` stops those scheduled reads and nothing else: set it
+on the worker to stop the reads, and on the web app so the screens say hourly checks are off. An
+installation has at most 20 delivery URLs tracked at a time, counted over releases still inside
+those 30 days.
+
 The intended hosted split is Vercel for web/API, a persistent Railway worker and one ephemeral
 Vercel Sandbox microVM per untrusted scan. The checked-in Railway command runs
 `npm run worker:hosted`, which fails before queue processing unless external Postgres, hosted

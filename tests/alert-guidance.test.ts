@@ -45,6 +45,8 @@ describe('specific evidence-based alert explanations',()=>{
   expect(result.title).toBe('A copy still serves the blocked build');
   expect(result.meaning).toContain('does not show who fetched them');
   expect(result.action).toContain('purge the CDN cache');
-  expect(result.verify).toContain('read again every hour');
+  expect(result.verify).toContain('how often it is read');
+  // the schedule can be switched off or have ended, so the guidance does not promise an hourly read
+  expect(`${result.meaning} ${result.verify}`).not.toMatch(/hourly|every hour/);
  });
 });

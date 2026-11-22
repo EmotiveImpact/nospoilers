@@ -97,7 +97,7 @@ These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch
 | GitHub coverage | OAuth, fresh App install and owner-proved existing-personal reconnect, HMAC webhooks, queue, worker and hourly visibility poller. Publicize, created-public, cheap `.env`/`.map` push, and fixture release scan are proven on the throwaway. |
 | npm / websites | Public and private registry watch, prerelease channels, unpublish fact. HTTPS origin crawl after ownership proof. Sentry/Bugsnag map custody. Provider-neutral `/api/v1/deploy`. |
 | Policy / receipts | `.nospoilers.yml`, allowlists, baselines, HMAC receipts, Release Diff, SIZE-003, hosted `POST /api/v1/scan`. |
-| Release Ledger | Append-only revisions with Mock 3-derived readiness detail, status-consistent proof steps, delivery verify on demand and every hour for 30 days after a release (published URL and attached URLs only; a copy still serving a blocked build after a fix raises an alert, routed as critical), the per-release **Where it went** and **After the fix** views built from those recorded reads, approve/reject/hold, public `/verify/:token`, attestation refresh (no Sigstore verify), signing policy. |
+| Release Ledger | Append-only revisions with Mock 3-derived readiness detail, status-consistent proof steps, delivery verify on demand and every hour for 30 days after a release (published URL and attached URLs only; a copy still serving a blocked build after a fix raises an alert, routed as critical; `DELIVERY_RECHECK=off` stops the hourly reads; at most 20 URLs tracked per installation at a time), the per-release **Where it went** and **After the fix** views built from those recorded reads, approve/reject/hold, public `/verify/:token`, attestation refresh (no Sigstore verify), signing policy. |
 | Package Identity | Protect owned names, snapshots, lookalikes, namespace watch, evidence/advisory page, risk score. Not a malware verdict. |
 | Team / alerts | Roles, GitHub-login invites, Slack/SIEM/Jira/PagerDuty, routing, audit, 90-day timeline, retention window, incident ack/assign/resolve. |
 | GitHub response | Make-private, delete latest pack assets, disable a non-NoSpoilers workflow — **409 until Administration, which we will not grant.** Setup and remediation PRs are reviewable and never merged. |
@@ -140,7 +140,7 @@ because their adapters or infrastructure foundations exist.
 - Isolated Electron DMG / EXE / MSI / AppImage worker. The normal worker **skips** those assets and alerts. See [`docs/ELECTRON.md`](ELECTRON.md).
 - CycloneDX/SPDX SBOM attachment.
 - Sigstore / cosign / SLSA verification (adapters store presence only).
-- Automatic discovery of third-party CDN mirrors (jsDelivr, unpkg and similar). The hourly recheck of the published URL and of delivery URLs a customer attached came off ice on 22 November 2026, when the owner approved the Where it went and After the fix screens that depend on it.
+- Automatic discovery of third-party CDN mirrors (jsDelivr, unpkg and similar). The hourly recheck of the published URL and of delivery URLs a customer attached came off ice on 22 November 2026, when the owner approved the Where it went and After the fix screens that depend on it. It is on by default and `DELIVERY_RECHECK=off` turns it off.
 - WorkOS enterprise SSO/SAML/OIDC and SCIM. The provider-neutral identity foundation is built;
   configure the enterprise adapter only after explicit priority or customer demand.
 - Native Vercel / Netlify / Cloudflare account OAuth (generic deploy trigger is built).

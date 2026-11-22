@@ -62,6 +62,8 @@ export async function runPollerTick(deps: {
   wakeWorker?: () => void;
   prospectDiscovery?: { token: string; maxAssetBytes: number };
   staleAfterMs?: number;
+  /** False turns the hourly delivery recheck off; checks run on demand still work. */
+  deliveryRecheck?: boolean;
 }): Promise<PollerTickResult> {
   const visibilityAlerts = await runVisibilityPoll(deps);
   const npm = await runNpmWatchPoll(deps);
@@ -70,7 +72,8 @@ export async function runPollerTick(deps: {
   const workspaceWeb = await runWorkspaceOriginPoll(deps);
   web.queued += workspaceWeb.queued;
   const maps = await runMapCustodyPoll(deps);
-  const delivery = await runDeliveryRecheckPoll({ store: deps.store });
+  const delivery =
+    deps.deliveryRecheck === false ? { queued: 0 } : await runDeliveryRecheckPoll({ store: deps.store });
   const prospects = await runProspectAcquisitionPoll({
     store: deps.store,
     npm: deps.npm,
@@ -114,6 +117,7 @@ export function startPoller(
     wakeWorker?: () => void;
     prospectDiscovery?: { token: string; maxAssetBytes: number };
     staleAfterMs?: number;
+    deliveryRecheck?: boolean;
   },
   intervalMs: number,
 ): { stop: () => Promise<void> } {

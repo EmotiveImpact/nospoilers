@@ -39,7 +39,7 @@ it.each([false,true])('requests explicit confirmation for a connected public pag
  const confirm=vi.fn();
  render(<HostedBriefFixture mode="brief" canPublish published={published} onConfirm={confirm}/>);
  fireEvent.click(screen.getByRole('tab',{name:'Proof'}));
- expect(screen.getByText(/Attached delivery URLs are rechecked every hour for 30 days after the release/)).toBeTruthy();
+ expect(screen.getByText(/Attached delivery URLs are tracked under Where it went/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:published?'Unpublish verification':'Publish verification'}));
  expect(confirm).toHaveBeenCalledWith({kind:published?'release-unpublish':'release-publish',id:1,expected:'npm:@example/long-release-package-name@2.0.0'});
  expect(fetcher.mock.calls.every(([,init])=>!(init as RequestInit|undefined)?.method)).toBe(true);

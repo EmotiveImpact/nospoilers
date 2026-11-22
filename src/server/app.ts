@@ -271,6 +271,7 @@ import { buildReleaseTrail } from "../watch/release-trail.ts";
 import {
   CANONICAL_DELIVERY_ACTOR,
   DELIVERY_RECHECK_WINDOW_DAYS,
+  deliveryRecheckSince,
   DeliveryVerifyError,
   MAX_DELIVERY_LOCATIONS_PER_INSTALL,
   MAX_DELIVERY_LOCATIONS_PER_REVISION,
@@ -5699,7 +5700,7 @@ export function createApp(deps: AppDeps): Hono {
     const release=await deps.store.getReleaseRevisionForUser(id,user.userId);
     if(!release)return c.json({error:'Unknown release.'},404);
     const now=new Date();
-    const since=new Date(now.getTime()-DELIVERY_RECHECK_WINDOW_DAYS*86_400_000).toISOString();
+    const since=deliveryRecheckSince(now);
     const revision=(row:ReleaseRevisionRow)=>({id:row.id,coordinate:row.coordinate,status:row.receipt_status,artifactSha256:row.artifact_sha256,createdAt:row.created_at});
     const locations=await deps.store.listDeliveryLocationsForRevisions([release.id]);
     const [lineage,checks,websites,mapStores,alerts]=await Promise.all([
@@ -5726,6 +5727,7 @@ export function createApp(deps: AppDeps): Hono {
       mapStores:mapStores.map(store=>({id:store.id,kind:store.kind,project:store.org_slug?`${store.org_slug}/${store.project_slug}`:store.project_slug,status:store.last_status,checkedAt:store.last_checked_at})),
       alerts:alerts.map(alert=>({id:alert.id,title:alert.title,createdAt:alert.created_at,resolvedAt:alert.resolved_at})),
       now,
+      recheck:{enabled:deps.config.deliveryRecheck!==false,days:DELIVERY_RECHECK_WINDOW_DAYS},
     })});
   });
 
@@ -6034,11 +6036,13 @@ export function createApp(deps: AppDeps): Hono {
     if (existing.length >= MAX_DELIVERY_LOCATIONS_PER_REVISION) {
       return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_REVISION} delivery URLs per release.` }, 400);
     }
+    // Only URLs still being tracked count, so an install is not shut out by its own history.
     const installCount = await deps.store.countDeliveryLocations({
       installationId: row.installation_id,
+      sinceIso: deliveryRecheckSince(),
     });
     if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) {
-      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_INSTALL} delivery URLs on this install.` }, 400);
+      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_INSTALL} delivery URLs can be tracked on this install at a time. URLs on releases older than ${DELIVERY_RECHECK_WINDOW_DAYS} days no longer count.` }, 400);
     }
     const location = await deps.store.insertDeliveryLocation({
       installationId: row.installation_id,

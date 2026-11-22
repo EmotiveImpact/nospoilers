@@ -4,7 +4,7 @@ import type {ReactNode} from 'react';
 import {Button} from '@/components/ui/button';
 import {WatchSkeleton} from '@/components/WatchDataState';
 import {TrailView} from '@/components/pieces/TrailView';
-import {trailTime} from '@/watch/release-trail';
+import {scheduleLine,trailTime} from '@/watch/release-trail';
 import {useReleaseTrail} from './useReleaseTrail';
 
 export function ReleaseTrail({releaseId,active,sourcesFoot,actions}:{releaseId:number;active:boolean;sourcesFoot?:ReactNode;actions?:ReactNode}){
@@ -17,7 +17,7 @@ export function ReleaseTrail({releaseId,active,sourcesFoot,actions}:{releaseId:n
     <header className="release-trail-head">
       <div>
         <h2 id={`release-trail-${releaseId}`}>Where it went</h2>
-        <p><i className={`np-dot is-${model.summary.tone}`} aria-hidden/>{model.summary.copies?'Checked hourly':'Not tracked yet'} · {model.summary.headline.charAt(0).toLowerCase()}{model.summary.headline.slice(1)}{model.summary.lastCheckedAt?` · last read ${trailTime(model.summary.lastCheckedAt)} UTC`:''}</p>
+        <p><i className={`np-dot is-${model.summary.tone}`} aria-hidden/>{model.summary.copies?scheduleLine(model.schedule):'Not tracked yet'} · {model.summary.headline.charAt(0).toLowerCase()}{model.summary.headline.slice(1)}{model.summary.lastCheckedAt?` · last read ${trailTime(model.summary.lastCheckedAt)} UTC`:''}</p>
       </div>
       <div className="release-trail-actions">{actions}<Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5" aria-hidden/>Refresh</Button></div>
     </header>

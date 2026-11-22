@@ -6,6 +6,8 @@ import {
   coordinateVersion,
   firstFix,
   readCheck,
+  scheduleLine,
+  scheduleTag,
   sourcesWhenFound,
   type ReleaseTrailInput,
   type TrailRevisionInput,
@@ -175,6 +177,18 @@ describe("buildReleaseTrail", () => {
     const trail = buildReleaseTrail(input({ locations: [], checks: [] }));
     expect(trail.summary).toMatchObject({ tone: "plain", headline: "No copy of this release is being tracked", copies: 0 });
     expect(trail.events.map((event) => event.text)).toEqual(["2.4.1 checked: blocked", "2.4.2 passed its check"]);
+  });
+
+  it("says whether copies are still read every hour, have stopped being read, or are read on demand only", () => {
+    expect(buildReleaseTrail(input()).schedule).toBe("hourly");
+    expect(buildReleaseTrail(input({ recheck: { enabled: false, days: 30 } })).schedule).toBe("off");
+    const later = new Date("2026-12-06T08:01:00.000Z");
+    expect(buildReleaseTrail(input({ now: later })).schedule).toBe("ended");
+    expect(buildReleaseTrail(input({ now: new Date("2026-12-05T07:59:00.000Z") })).schedule).toBe("hourly");
+    expect(buildReleaseTrail(input({ now: later, recheck: { enabled: true, days: 60 } })).schedule).toBe("hourly");
+    expect(buildReleaseTrail(input({ now: later, recheck: { enabled: false, days: 30 } })).schedule).toBe("off");
+    expect([scheduleLine("hourly"), scheduleLine("ended"), scheduleLine("off")]).toEqual(["Checked hourly", "Hourly checks have ended", "Hourly checks are off"]);
+    expect([scheduleTag("hourly"), scheduleTag("ended"), scheduleTag("off")]).toEqual(["checked every hour", "hourly checks have ended", "hourly checks are off"]);
   });
 
   it("lists websites and map stores as separately watched context, never as copies", () => {

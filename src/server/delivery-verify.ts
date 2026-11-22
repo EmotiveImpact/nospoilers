@@ -13,6 +13,7 @@ import { artifactLine } from "../watch/release-trail.ts";
 export { artifactLine };
 
 export const MAX_DELIVERY_LOCATIONS_PER_REVISION = 5;
+/** Delivery URLs one install may have tracked at a time: those on releases still inside the recheck window. */
 export const MAX_DELIVERY_LOCATIONS_PER_INSTALL = 20;
 export const MAX_DELIVERY_REDIRECTS = 3;
 export const MAX_DELIVERY_URL_CHARS = 4000;
@@ -33,6 +34,16 @@ const MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+
 export const DELIVERY_VERIFY_KIND = "delivery_verify";
 /** Attached delivery URLs are rechecked every hour for this long after their release was recorded. */
 export const DELIVERY_RECHECK_WINDOW_DAYS = 30;
+
+/** The start of the recheck window: releases recorded since this time are still being tracked. */
+export function deliveryRecheckSince(now: Date = new Date()): string {
+  return new Date(now.getTime() - DELIVERY_RECHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/** Whether the hourly recheck still covers a release recorded at `createdAt`. */
+export function deliveryRecheckCovers(createdAt: string, now: Date = new Date()): boolean {
+  return new Date(createdAt).toISOString() >= deliveryRecheckSince(now);
+}
 
 export type DeliveryUrl = {
   url: string;
@@ -294,6 +305,7 @@ export async function attachCanonicalDeliveryUrl(
     revisionId: number;
     url: string;
     createdByLogin?: string;
+    now?: Date;
   },
 ): Promise<{ id: number } | null> {
   const parsed = parseDeliveryUrl(input.url);
@@ -304,6 +316,7 @@ export async function attachCanonicalDeliveryUrl(
   if (existing.length >= MAX_DELIVERY_LOCATIONS_PER_REVISION) return null;
   const installCount = await store.countDeliveryLocations({
     installationId: input.installationId,
+    sinceIso: deliveryRecheckSince(input.now),
   });
   if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) return null;
   const revision = await store.getReleaseRevision(input.revisionId);
@@ -352,9 +365,8 @@ export async function runDeliveryRecheckPoll(deps: {
   now?: () => Date;
 }): Promise<{ queued: number }> {
   const now = deps.now?.() ?? new Date();
-  const since = new Date(now.getTime() - DELIVERY_RECHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const hour = now.toISOString().slice(0, 13);
-  const locations = await deps.store.listDeliveryLocationsForRecheck(since.toISOString());
+  const locations = await deps.store.listDeliveryLocationsForRecheck(deliveryRecheckSince(now));
   const allowed = new Map<number, boolean>();
   let queued = 0;
   for (const location of locations) {
@@ -574,6 +586,8 @@ export async function runDeliveryVerifyJob(input: {
   githubDeliveryId?: string | null;
   /** True for the hourly recheck: an unchanged observation is recorded but not announced again. */
   scheduled?: boolean;
+  /** False when the hourly recheck is switched off, so an alert does not promise one. */
+  hourlyRecheck?: boolean;
   maxBytes?: number;
   fetch?: typeof fetch;
   lookup?: WebhookHostLookup;
@@ -622,13 +636,14 @@ export async function runDeliveryVerifyJob(input: {
     // A later release of this artifact passed, yet this URL still serves the bytes that did not.
     const dedupe = `delivery_still_exposed:${location.id}:${successor.id}`;
     if (await input.store.alertExistsForDeliveryId(dedupe)) return;
+    const rechecked = input.hourlyRecheck !== false && deliveryRecheckCovers(revision.created_at);
     await input.notifier.send({
       installationId: location.installation_id,
       repoId: revision.repo_id,
       repoFullName: null,
       kind: "delivery_still_exposed",
       title: `${location.host} still serves ${revision.coordinate} after the fix`,
-      body: `${redacted} still serves the bytes recorded for ${revision.coordinate} (SHA-256 ${revision.artifact_sha256}), which did not pass policy. ${successor.coordinate} passed on ${successor.created_at.slice(0, 10)}. Replace or remove the copy at this URL; it is rechecked every hour. Bytes were hashed in transit and not stored. This is a delivery fact, not a compromise claim.`,
+      body: `${redacted} still serves the bytes recorded for ${revision.coordinate} (SHA-256 ${revision.artifact_sha256}), which did not pass policy. ${successor.coordinate} passed on ${successor.created_at.slice(0, 10)}. Replace or remove the copy at this URL; ${rechecked ? "it is rechecked every hour" : "run Verify now on the release once it is replaced, because hourly rechecks are not running for it"}. Bytes were hashed in transit and not stored. This is a delivery fact, not a compromise claim.`,
       githubDeliveryId: dedupe,
       releaseRevisionIds: [revision.id, successor.id],
     });

@@ -1,9 +1,16 @@
 import './pieces.css';
 import {useState,type ReactNode} from 'react';
-import {sourcesWhenFound,trailTime,type ReleaseTrailModel} from '@/watch/release-trail';
+import {scheduleTag,sourcesWhenFound,trailTime,type ReleaseTrailModel,type TrailSchedule} from '@/watch/release-trail';
 import {ActivityFeed,AfterTheFix,SourceList,SourceNet,TrailNote} from './Trail';
 
 const plural=(count:number,one:string,many:string)=>`${count} ${count===1?one:many}`;
+
+/** What is read and when, said only as far as the schedule in force allows. */
+const COVERS:Record<TrailSchedule,string>={
+  hourly:'Each hour, for 30 days after a release, we fetch it from where it was published and from every delivery URL attached to it, and compare the bytes with the build that was checked.',
+  ended:'For 30 days after a release, each copy is read every hour and its bytes compared with the build that was checked. Those 30 days have passed for this release, so a copy is now read only when you choose Verify now beside it under Release controls.',
+  off:'Hourly checks are switched off on this server, so a copy is read only when you choose Verify now beside it under Release controls. Each read fetches that copy and compares its bytes with the build that was checked.',
+};
 
 /** What the note under the grid says, in the release's own terms. */
 export function TrailVerdict({model,now}:{model:ReleaseTrailModel;now?:Date}){
@@ -48,7 +55,7 @@ export function TrailView({model,now,sourcesFoot}:{model:ReleaseTrailModel;now?:
       </aside>
     </div>
     {copies.length?<>
-      <h3 className="np-label">After the fix<span>checked every hour</span></h3>
+      <h3 className="np-label">After the fix<span>{scheduleTag(model.schedule)}</span></h3>
       <AfterTheFix model={model} now={now}/>
       <ul className="np-hkey" aria-label="Key"><li><i className="is-exposed"/>Serving the blocked build</li><li><i className="is-clear"/>Clear</li><li><i className="is-changed"/>Changed</li><li><i className="is-unknown"/>Could not be read</li><li><i/>No check that hour</li></ul>
     </>:null}
@@ -56,7 +63,7 @@ export function TrailView({model,now,sourcesFoot}:{model:ReleaseTrailModel;now?:
     <div className="np-trail-two">
       <div><h3 className="np-label">What happened</h3><ActivityFeed events={model.events} now={now}/></div>
       <div><h3 className="np-label">What this covers</h3>
-        <p>Each hour, for 30 days after a release, we fetch it from where it was published and from every delivery URL attached to it, and compare the bytes with the build that was checked. Websites and private map uploads are watched separately and shown here for context.</p>
+        <p>{COVERS[model.schedule]??COVERS.hourly} Websites and private map uploads are watched separately and shown here for context.</p>
         <p>A clear cell means the blocked build was not served at that check. It cannot show whether someone downloaded it earlier.</p>
       </div>
     </div>

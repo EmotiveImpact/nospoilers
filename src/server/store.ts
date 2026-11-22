@@ -8104,7 +8104,19 @@ export function createStore(
     async countDeliveryLocations(input: {
       installationId: number;
       revisionId?: number;
+      /** Count only URLs on releases recorded since this time: the ones still being tracked. */
+      sinceIso?: string;
     }): Promise<number> {
+      if (input.sinceIso && !input.revisionId) {
+        const { rows } = await sql.query<{ n: unknown }>(
+          `SELECT count(*)::int AS n
+           FROM release_delivery_locations l
+           JOIN release_revisions rr ON rr.id = l.revision_id
+           WHERE l.installation_id = $1 AND rr.created_at >= $2::timestamptz`,
+          [input.installationId, input.sinceIso],
+        );
+        return num(rows[0]?.n ?? 0);
+      }
       const { rows } = await sql.query<{ n: unknown }>(
         input.revisionId
           ? `SELECT count(*)::int AS n FROM release_delivery_locations

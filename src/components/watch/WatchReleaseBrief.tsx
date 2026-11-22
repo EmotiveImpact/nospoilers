@@ -170,7 +170,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
               <ExternalLink className="size-5" aria-hidden />
               <h3>Public verification</h3>
               <p>{release.publicPage?.enabled ? `Published at ${release.publicPage.path}` : "Private · no active verification page for this receipt."}</p>
-              <p>Review the confirmation before publishing. Attached delivery URLs are rechecked every hour for 30 days after the release.</p>
+              <p>Review the confirmation before publishing. Attached delivery URLs are tracked under Where it went.</p>
               {canPublishVerify?<ContextButton
                 type="button"
                 size="sm"

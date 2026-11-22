@@ -28,6 +28,8 @@ export type TrailSource={
 export type TrailVersion={id:number;version:string;status:TrailReleaseStatus;createdAt:string;role:'this'|'fix'|'other'};
 export type TrailEvent={at:string;tone:TrailTone;text:string};
 export type TrailAlert={id:number;title:string;createdAt:string;resolvedAt:string|null};
+/** How this release's copies are being read: every hour, no longer (the window has passed), or only on demand (switched off). */
+export type TrailSchedule='hourly'|'ended'|'off';
 export type ReleaseTrailModel={
   release:{id:number;coordinate:string;name:string;version:string;status:TrailReleaseStatus;createdAt:string};
   fix:{id:number;version:string;createdAt:string}|null;
@@ -36,6 +38,7 @@ export type ReleaseTrailModel={
   hours:string[];
   events:TrailEvent[];
   alerts:TrailAlert[];
+  schedule:TrailSchedule;
   summary:{tone:TrailTone;headline:string;exposed:number;clear:number;changed:number;unknown:number;copies:number;lastCheckedAt:string|null};
 };
 
@@ -54,6 +57,8 @@ export type ReleaseTrailInput={
   alerts?:TrailAlert[];
   now:Date;
   hours?:number;
+  /** The server's hourly recheck: whether it is switched on and how many days it follows a release. On for 30 days when left out. */
+  recheck?:{enabled:boolean;days:number};
 };
 
 /** A recorded time in UTC: the clock time today, the day and time otherwise. */
@@ -66,6 +71,12 @@ export function trailTime(iso:string|null|undefined,now:Date=new Date()){
 }
 
 export const TRAIL_HOURS=24;
+/** Days the hourly recheck follows a release when the server does not say otherwise. */
+export const TRAIL_RECHECK_DAYS=30;
+
+/** The schedule in a few words, for the line under a heading and for the small label beside one. */
+export const scheduleLine=(schedule:TrailSchedule|undefined)=>schedule==='off'?'Hourly checks are off':schedule==='ended'?'Hourly checks have ended':'Checked hourly';
+export const scheduleTag=(schedule:TrailSchedule|undefined)=>schedule==='off'?'hourly checks are off':schedule==='ended'?'hourly checks have ended':'checked every hour';
 const HOUR_MS=3_600_000;
 
 /** The version part of a release coordinate: `npm:pkg@1.2.3` and `github:o/r@v1#asset` give `1.2.3` and `v1`. */
@@ -185,6 +196,8 @@ export function buildReleaseTrail(input:ReleaseTrailInput):ReleaseTrailModel{
   for(const row of [...lineage].sort((a,b)=>later(a,b)?1:-1))bySha.set(row.artifactSha256,row);
   const context:ReadContext={status,bySha,sha:release.artifactSha256};
   const fix=firstFix(release,lineage);
+  const recheck=input.recheck??{enabled:true,days:TRAIL_RECHECK_DAYS};
+  const schedule:TrailSchedule=!recheck.enabled?'off':now.getTime()-new Date(release.createdAt).getTime()>recheck.days*24*HOUR_MS?'ended':'hourly';
 
   const lastHour=hourStart(now.getTime());
   const hours=Array.from({length:hourCount},(_,index)=>new Date(lastHour-(hourCount-1-index)*HOUR_MS).toISOString());
@@ -280,7 +293,7 @@ export function buildReleaseTrail(input:ReleaseTrailInput):ReleaseTrailModel{
   return {
     release:{id:release.id,coordinate:release.coordinate,name:coordinateName(release.coordinate),version,status,createdAt:release.createdAt},
     fix:fix?{id:fix.id,version:coordinateVersion(fix.coordinate),createdAt:fix.createdAt}:null,
-    sources,versions,hours,events:events.slice(-14),alerts,
+    sources,versions,hours,events:events.slice(-14),alerts,schedule,
     summary:{...summary,exposed,clear,changed,unknown,copies:copies.length,lastCheckedAt},
   };
 }

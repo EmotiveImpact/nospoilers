@@ -111,6 +111,32 @@ describe('loading the trail in the app',()=>{
     expect(screen.getByText(/Checked hourly · 1 source is still serving this build/)).toBeTruthy();
   });
 
+  it('does not claim hourly checks when they are switched off or have ended',async()=>{
+    const off=buildReleaseTrail(input({recheck:{enabled:false,days:30}}));
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({trail:off}),{status:200,headers:{'content-type':'application/json'}})));
+    const view=render(<ReleaseTrail releaseId={3} active/>);
+    expect(await screen.findByText(/Hourly checks are off · 1 source is still serving this build/)).toBeTruthy();
+    expect(screen.getByText('hourly checks are off')).toBeTruthy();
+    expect(screen.getByText(/Hourly checks are switched off on this server, so a copy is read only when you choose Verify now/)).toBeTruthy();
+    expect(view.container.textContent).not.toMatch(/Checked hourly|checked every hour|Each hour, for 30 days/);
+    view.unmount();
+
+    const ended=buildReleaseTrail(input({now:new Date('2026-12-20T12:20:00.000Z')}));
+    const {container}=render(<TrailView model={ended} now={new Date('2026-12-20T12:20:00.000Z')}/>);
+    expect(ended.schedule).toBe('ended');
+    expect(screen.getByText('hourly checks have ended')).toBeTruthy();
+    expect(screen.getByText(/Those 30 days have passed for this release/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/checked every hour/);
+  });
+
+  it('says on the alert when hourly checks are off',async()=>{
+    const off=buildReleaseTrail(input({recheck:{enabled:false,days:30}}));
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({trail:off}),{status:200,headers:{'content-type':'application/json'}})));
+    render(<AlertAfterFix releaseId={3} href="/watch/releases?release=3&releaseTab=where"/>);
+    expect(await screen.findByText('hourly checks are off')).toBeTruthy();
+    expect(screen.queryByText('checked every hour')).toBeNull();
+  });
+
   it('does not fetch until the section is opened',()=>{
     const fetchMock=vi.fn();
     vi.stubGlobal('fetch',fetchMock);
