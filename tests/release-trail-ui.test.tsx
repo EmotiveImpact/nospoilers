@@ -50,6 +50,8 @@ describe('Where it went',()=>{
     expect(within(sources).getByText('Still serving')).toBeTruthy();
     expect(within(sources).getByText('Clear · 10:05')).toBeTruthy();
     expect(within(sources).getByText('Verified website · watched separately')).toBeTruthy();
+    // a separately watched source says it briefly in the list and in full on hover
+    expect(within(sources).getByText('Clean').getAttribute('title')).toBe('Clean at its last check');
     expect(screen.getByText('1 source carries this build')).toBeTruthy();
     expect(screen.getByText('cdn.acme.example is still serving').parentElement?.textContent).toBe('cdn.acme.example is still serving 2.4.1 after 2.4.2 passed. Alert sent 10:42 UTC.');
   });

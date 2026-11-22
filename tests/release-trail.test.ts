@@ -200,6 +200,22 @@ describe("buildReleaseTrail", () => {
     expect(trail.summary.exposed).toBe(1);
   });
 
+  it("names an attached copy on the registry or a GitHub release by what it is, and shows only its path", () => {
+    const attach = (id: number, url: string) => ({ id, url, host: new URL(url).host, canonical: false, lastStatus: "matched", lastSha256: BAD, lastCheckedAt: at(12) });
+    const trail = buildReleaseTrail(input({
+      locations: [
+        attach(1, "https://registry.npmjs.org/acme-cli/-/acme-cli-2.4.1.tgz"),
+        attach(2, "https://github.com/acme/cli/releases/download/v2.4.1/acme-cli-2.4.1.tgz"),
+        attach(3, "https://github.com/acme/cli/archive/refs/tags/v2.4.1.tar.gz"),
+        attach(4, "https://cdn.acme.example/cli/2.4.1/cli.tgz"),
+      ],
+      checks: [],
+    }));
+    expect(trail.sources.map((source) => source.name)).toEqual(["npm registry", "GitHub release", "github.com", "cdn.acme.example"]);
+    expect(trail.sources[3].detail).toBe("/cli/2.4.1/cli.tgz");
+    expect(trail.sources.every((source) => source.kind === "copy" && !source.detail.includes("://"))).toBe(true);
+  });
+
   it("reads a passing release against its own bytes", () => {
     const trail = buildReleaseTrail({
       release: fix,

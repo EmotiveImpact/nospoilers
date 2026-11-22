@@ -72,7 +72,7 @@ export function areaForRule(rule:string):Exclude<CheckAreaId,'live'|'inventory'>
 const worst=(findings:Finding[]):CheckAreaTone=>findings.some(finding=>finding.severity==='critical')?'critical':findings.length?'warn':'clear';
 const shortPath=(path:string)=>{const carrier=carrierPath(path);return carrier.length>28?`…${carrier.slice(-27)}`:carrier;};
 
-export function buildCheckAreas(report:ScanReport|null|undefined,live:LiveEvidence):CheckArea[]{
+export function buildCheckAreas(report:Pick<ScanReport,'findings'|'status'|'manifest'>|null|undefined,live:LiveEvidence):CheckArea[]{
   const findings=report?.findings??[];
   const quiet:{tone:CheckAreaTone;detail:string}=!report?{tone:'unchecked',detail:'Not checked'}:report.status==='inconclusive'?{tone:'unchecked',detail:'Check incomplete'}:{tone:'clear',detail:'Clear'};
   return CHECK_AREAS.map(({id,label})=>{

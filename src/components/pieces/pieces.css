@@ -30,6 +30,7 @@
 
 /* ---- file map ---- */
 .np-filemap-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 28px; align-items: start; padding: 16px 18px; border-radius: 12px; background: var(--np-surface); }
+.np-filemap-body.is-solo { grid-template-columns: minmax(0, 1fr); }
 .np-fgrid { display: grid; grid-template-columns: repeat(36, minmax(0, 1fr)); gap: 3px; }
 .np-fgrid.is-few { grid-template-columns: repeat(auto-fill, 26px); gap: 4px; }
 .np-ft { display: block; aspect-ratio: 1; border: 0; border-radius: 2.5px; background: var(--np-tile); padding: 0; margin: 0; min-width: 0; appearance: none; }
@@ -183,6 +184,8 @@ button.np-ft:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @container (max-width: 700px) {
   .np-trail-two { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .np-filemap-body { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+}
+@container (max-width: 520px) {
   .np-fgrid { grid-template-columns: repeat(18, minmax(0, 1fr)); }
   .np-fkey em { margin-left: 0; width: 100%; }
 }
@@ -193,10 +196,12 @@ button.np-ft:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .np-vtl { height: 78px; }
   .np-vtl-axis, .np-vtl-v { top: 34px; }
   .np-vtl-now b { left: auto; right: 7px; }
-  .np-hhead, .np-hline { grid-template-columns: 88px minmax(0, 1fr); gap: 8px 10px; }
-  .np-hhead > span:last-child { display: none; }
-  .np-hline { padding: 6px 0; }
-  .np-hstat { grid-column: 1 / -1; text-align: left; font-size: 11.5px; }
+  .np-hhead { grid-template-columns: minmax(0, 1fr); }
+  .np-hhead > span { display: none; }
+  .np-hline { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 8px 0; }
+  .np-hname { grid-area: 1 / 1; }
+  .np-hstat { grid-area: 1 / 2; font-size: 11.5px; }
+  .np-hcells { grid-area: 2 / 1 / 3 / -1; }
 }
 @container (max-width: 460px) {
   .np-wheel { display: none; }

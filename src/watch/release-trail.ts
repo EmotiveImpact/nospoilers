@@ -151,6 +151,16 @@ function originName(coordinate:string){
   return 'Published release';
 }
 
+/** An attached copy on one of the two places the product itself reads releases from. */
+function knownHostName(url:string){
+  try{
+    const parsed=new URL(url);
+    if(parsed.host==='registry.npmjs.org')return 'npm registry';
+    if(parsed.host==='github.com'&&parsed.pathname.includes('/releases/download/'))return 'GitHub release';
+  }catch{/* fall through to the host */}
+  return null;
+}
+
 /** The path of an attached URL, shortened from the front on whole segments. The host is shown as the name. */
 function urlPath(url:string){
   try{
@@ -184,7 +194,7 @@ export function buildReleaseTrail(input:ReleaseTrailInput):ReleaseTrailModel{
   if(fix)events.push({at:fix.createdAt,tone:'good',text:`${coordinateVersion(fix.coordinate)||'A later release'} passed its check`});
 
   const sources:TrailSource[]=input.locations.map(location=>{
-    const name=location.canonical?originName(release.coordinate):location.host;
+    const name=location.canonical?originName(release.coordinate):knownHostName(location.url)??location.host;
     const own=input.checks.filter(check=>check.locationId===location.id).sort((a,b)=>a.createdAt<b.createdAt?-1:a.createdAt>b.createdAt?1:0);
     const readings=own.map(check=>({at:check.createdAt,...readCheck(context,check.status,check.observedSha256)}));
     const current=readCheck(context,location.lastStatus,location.lastSha256);

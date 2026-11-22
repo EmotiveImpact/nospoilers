@@ -8,6 +8,7 @@ const LINE:Record<TrailState,string>={exposed:'rgba(255,45,71,.55)',clear:'rgba(
 
 const shortLabel=(source:TrailSource,now?:Date)=>source.state==='exposed'&&source.scope==='release'?(source.label.startsWith('Still')?'Still serving':'Serving')
   :source.state==='clear'&&source.since?`Clear · ${trailTime(source.since,now)}`
+  :source.scope==='workspace'&&source.state==='clear'?(source.kind==='maps'?'Private':'Clean')
   :source.label;
 
 const fitEnd=(text:string,max:number)=>text.length>max?`${text.slice(0,Math.max(1,max-1))}…`:text;

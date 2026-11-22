@@ -330,6 +330,15 @@ export function WatchSourcesSummary({
                     {relatedRelease ? "Open latest release brief" : "View release history"}
                   </Button>
                 ) : null}
+                {relatedRelease && (selectedSource.kind === "npm" || selectedSource.kind === "github") ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(watchHref(watchPath("releases"), search, { release: relatedRelease.id, releaseTab: "where" }))}
+                  >
+                    Where it went
+                  </Button>
+                ) : null}
                 {selectedSource.alertCount > 0 ? (
                   <Button
                     type="button"

@@ -10,7 +10,7 @@ export function FileMap({model,facts,selectedPath,onSelect}:{model:FileMapModel;
   const selected=selectedPath?carrierPath(selectedPath):null;
   const shown=model.marked.slice(0,4);
   return <section className="np np-filemap" aria-label="File map">
-    <div className="np-filemap-body">
+    <div className={`np-filemap-body${facts.length?'':' is-solo'}`}>
       <div>
         <div className={`np-fgrid${model.tiles.length<=36?' is-few':''}`}>
           {model.tiles.map((tile,index)=>tile.tone&&tile.findingIndex!=null&&onSelect
@@ -23,7 +23,7 @@ export function FileMap({model,facts,selectedPath,onSelect}:{model:FileMapModel;
           <em>{model.perTile===1?'Each tile is one file':`Each tile is about ${model.perTile} files`}</em>
         </div>
       </div>
-      <dl className="np-facts">{facts.map(fact=><div key={fact.label} style={{display:'contents'}}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
+      {facts.length?<dl className="np-facts">{facts.map(fact=><div key={fact.label} style={{display:'contents'}}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>:null}
     </div>
   </section>;
 }

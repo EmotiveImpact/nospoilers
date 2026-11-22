@@ -43,6 +43,18 @@ it('keeps alert pagination out of other screens and connected release cursors',(
  }
 });
 
+it('opens a release on Where it went and drops that section when the release or screen changes',()=>{
+ const search='?workspace=team&install=7';
+ const opened=watchHref('/watch/releases',search,{release:5,releaseTab:'where'});
+ expect(opened).toBe('/watch/releases?workspace=team&install=7&release=5&releaseTab=where');
+ const inside=new URL(opened,'http://localhost').search;
+ expect(watchHref('/watch/releases',inside,{release:5})).toBe(opened);
+ expect(watchHref('/watch/releases',inside,{release:6})).toBe('/watch/releases?workspace=team&install=7&release=6');
+ expect(watchHref('/watch/releases',inside,{release:null})).toBe('/watch/releases?workspace=team&install=7');
+ expect(watchHref('/watch/alerts',inside)).toBe('/watch/alerts?workspace=team&install=7');
+ expect(watchHref('/watch/releases',search,{releaseTab:'where'})).toBe('/watch/releases?workspace=team&install=7');
+});
+
 it('drops a default-size alert cursor when switching to Releases',()=>{
  const search='?workspace=team&install=7&tab=open&before=37';
  expect(watchHref('/watch/alerts',search)).toBe('/watch/alerts'+search);
