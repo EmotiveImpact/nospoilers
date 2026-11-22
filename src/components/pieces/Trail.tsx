@@ -6,9 +6,15 @@ import {trailTime,type ReleaseTrailModel,type TrailEvent,type TrailSource,type T
 const COLOUR:Record<TrailState,string>={exposed:'#ff2d47',clear:'#4cc38a',changed:'#f2a33a',unknown:'#5a5e66'};
 const LINE:Record<TrailState,string>={exposed:'rgba(255,45,71,.55)',clear:'rgba(76,195,138,.4)',changed:'rgba(242,163,58,.45)',unknown:'rgba(255,255,255,.12)'};
 
+/** A separately watched source in a word. Its full reading stays on hover and in the source map. */
+const watchedLabel=(source:TrailSource)=>source.state==='clear'?(source.kind==='maps'?'Private':'Clean')
+  :source.state==='changed'?'Findings'
+  :source.state==='exposed'?(source.kind==='maps'?'Check failed':'Public map')
+  :source.label;
+
 const shortLabel=(source:TrailSource,now?:Date)=>source.state==='exposed'&&source.scope==='release'?(source.label.startsWith('Still')?'Still serving':'Serving')
   :source.state==='clear'&&source.since?`Clear · ${trailTime(source.since,now)}`
-  :source.scope==='workspace'&&source.state==='clear'?(source.kind==='maps'?'Private':'Clean')
+  :source.scope==='workspace'?watchedLabel(source)
   :source.label;
 
 const fitEnd=(text:string,max:number)=>text.length>max?`${text.slice(0,Math.max(1,max-1))}…`:text;
