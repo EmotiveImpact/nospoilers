@@ -194,6 +194,7 @@ body .watch-desk .journey-result-status::before { display: none !important; }
 body .watch-desk .journey-result-status.is-blocked { background: #ff2d471c; color: #ff6a7c; }
 body .watch-desk .journey-result-status.is-ready { background: #4cc38a1a; color: #4cc38a; }
 body .watch-desk .journey-result-status.is-pending { background: #f2a33a1a; color: #f2a33a; }
+body .watch-desk .journey-chip-short { display: none; }
 body .watch-desk .journey-release-scope { margin: 4px 0 0; font-size: 12px; color: #81858e; }
 body .watch-desk .journey-release-table tbody tr.is-selected { box-shadow: none !important; }
 body .watch-desk .journey-release-results { gap: 14px; border: 0 !important; min-height: 0; align-items: start; }
@@ -850,6 +851,17 @@ body .watch-desk .overview-latest .overview-eyebrow { line-height: 20px !importa
   body .watch-desk :is(.journey-build-name, .overview-entity) { max-width: 100%; min-width: 0; }
   body .watch-desk :is(.journey-build-name, .overview-entity) :is(strong, small) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   body .watch-desk .workspace-row-actions { flex-wrap: nowrap; }
+  /* Connected releases on a phone: the name, its result and a way in. Source and date give way. */
+  body .watch-desk .journey-release-table.journey-connected-table :is(td, th):is(:nth-child(2), :nth-child(4)) { display: none !important; }
+  body .watch-desk .journey-release-table.journey-connected-table :is(td, th):is(:nth-child(3), :nth-child(5)) { display: table-cell !important; }
+  body .watch-desk .journey-release-table.journey-connected-table :is(td, th):first-child { width: auto !important; overflow-wrap: anywhere; }
+  body .watch-desk .journey-release-table.journey-connected-table :is(td, th):nth-child(3) { width: 112px !important; white-space: normal !important; padding-inline: 4px !important; }
+  body .watch-desk .journey-release-table.journey-connected-table :is(td, th):nth-child(5) { width: 48px !important; padding-inline: 0 8px !important; text-align: right; }
+  body .watch-desk .journey-release-table.journey-connected-table tbody td { height: auto !important; padding-block: 12px !important; }
+  body .watch-desk .journey-connected-table .journey-result-status:has(.journey-chip-short) .journey-chip-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body .watch-desk .journey-connected-table .journey-chip-short { display: inline !important; }
+  body .watch-desk .journey-release-table.journey-connected-table td:nth-child(5) button { width: 40px; height: 40px; padding: 0 !important; background: none !important; }
+  body .watch-desk .journey-row-open-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
 /* Drawers, dialogs and menus float above the page: one soft edge, quiet fills inside. */
