@@ -15,7 +15,7 @@ const caption = `CHECKED ${trailTime(acmeTrail.release.createdAt, ACME_NOW)} UTC
 const PIECES: Record<string, () => ReactNode> = {
   filemap: () => <FileMap model={acmeFileMap} facts={[]} />,
   fileclear: () => <FileMapClear model={acmeFileMap} />,
-  net: () => <div className="np"><SourceNet title={title} caption={caption} sources={acmeSourcesWhenFound} /></div>,
+  net: () => <div className="np"><SourceNet title={title} caption={caption} sources={acmeSourcesWhenFound} now={ACME_NOW} /></div>,
   hosts: () => <div className="np"><SourceList sources={acmeSourcesWhenFound} now={ACME_NOW} /></div>,
   afterfix: () => <div className="np"><AfterTheFix model={acmeTrail} now={ACME_NOW} /><TrailNote tone={acmeTrail.summary.tone}><TrailVerdict model={acmeTrail} now={ACME_NOW} /></TrailNote></div>,
   feed: () => <div className="np"><ActivityFeed events={acmeTrail.events} now={ACME_NOW} /></div>,

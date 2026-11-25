@@ -25,12 +25,60 @@ const fitMiddle=(text:string,max:number)=>{
 };
 
 /** One release linked to every place it is served. Sources watched separately are drawn dashed. */
-export function SourceNet({title,caption,sources}:{title:string;caption:string;sources:TrailSource[]}){
+export function SourceNet({title,caption,sources,now}:{title:string;caption:string;sources:TrailSource[];now?:Date}){
+  return <>
+    <WideNet title={title} caption={caption} sources={sources}/>
+    <NarrowNet title={title} caption={caption} sources={sources} now={now}/>
+  </>;
+}
+
+/**
+ * The same map for a phone. Each name sits centred over its point (under it for the lower half),
+ * never beside it, so nothing is pushed against the edge of a narrow screen.
+ */
+function NarrowNet({title,caption,sources,now}:{title:string;caption:string;sources:TrailSource[];now?:Date}){
+  const W=330,H=338,cx=165,cy=153,RX=104,RY=102;
+  const shown=sources.slice(0,8);
+  const dashed=shown.some(source=>source.scope==='workspace'||source.state==='unknown');
+  const step=360/Math.max(1,shown.length);
+  const point=(index:number)=>{const a=(-90+index*step)*Math.PI/180;return {x:cx+Math.cos(a)*RX,y:cy+Math.sin(a)*RY,below:Math.sin(a)>0.2};};
+  // Decorative copy: on a phone the wide map stays in the page, visually hidden, and carries the description.
+  return <svg className="np-net np-net-narrow" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+    <ellipse cx={cx} cy={cy} rx={RX*0.62} ry={RY*0.62} fill="none" stroke="rgba(255,255,255,.04)"/>
+    {shown.map((source,index)=>{const {x,y}=point(index);
+      return <line key={source.key} x1={cx} y1={cy} x2={x} y2={y} stroke={LINE[source.state]} strokeWidth={1.2} strokeDasharray={source.scope==='workspace'||source.state==='unknown'?'3 4':undefined}/>;
+    })}
+    <rect x={cx-64} y={cy-20} width={128} height={40} rx={9} fill="#111113" stroke="rgba(255,255,255,.08)"/>
+    <text x={cx} y={cy-2} textAnchor="middle" className="np-cn">{title.length>18?`${title.slice(0,17)}…`:title}</text>
+    <text x={cx} y={cy+12} textAnchor="middle" className="np-cs">{caption}</text>
+    {shown.map((source,index)=>{
+      const {x,y,below}=point(index),colour=COLOUR[source.state],hollow=source.state==='unknown';
+      const room=Math.min(x,W-x)*2-8;
+      const name=fitMiddle(source.name,Math.floor(room/6.6)),label=fitEnd(shortLabel(source,now),Math.floor(room/6));
+      const nameY=below?y+21:y-25,labelY=nameY+14;
+      return <g key={source.key}>
+        {source.state==='exposed'?<circle cx={x} cy={y} r={10} fill="rgba(255,45,71,.16)"/>:null}
+        <circle cx={x} cy={y} r={hollow?3.5:4.5} fill={hollow?'#0c0c0d':colour} stroke={colour} strokeWidth={1.4}/>
+        <text x={x} y={nameY} textAnchor="middle" className="np-nn">{name}</text>
+        <text x={x} y={labelY} textAnchor="middle" className={`np-ns is-${source.state}`}>{label}</text>
+      </g>;
+    })}
+    <g className="np-netkey" transform={`translate(${cx} ${H-6})`}>
+      <circle cx={dashed?-133:-60} cy={-4} r={3.5} fill={COLOUR.exposed}/>
+      <text x={dashed?-125:-52} y={0}>Serving the build</text>
+      <circle cx={dashed?-29:44} cy={-4} r={3.5} fill={COLOUR.clear}/>
+      <text x={dashed?-21:52} y={0}>Clear</text>
+      {dashed?<><line x1={19} y1={-4} x2={35} y2={-4} stroke="rgba(255,255,255,.35)" strokeWidth={1.2} strokeDasharray="3 3"/><text x={41} y={0}>Watched separately</text></>:null}
+    </g>
+  </svg>;
+}
+
+function WideNet({title,caption,sources}:{title:string;caption:string;sources:TrailSource[]}){
   const W=720,H=362,cx=360,cy=182,R=128;
   const shown=sources.slice(0,8);
   const step=360/Math.max(1,shown.length);
   const summary=shown.map(source=>`${source.name}: ${source.label}`).join('; ');
-  return <svg className="np-net" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} linked to each place it is served. ${summary}`}>
+  return <svg className="np-net np-net-wide" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} linked to each place it is served. ${summary}`}>
     <circle cx={cx} cy={cy} r={92} fill="none" stroke="rgba(255,255,255,.04)"/>
     <circle cx={cx} cy={cy} r={150} fill="none" stroke="rgba(255,255,255,.03)"/>
     {shown.map((source,index)=>{
