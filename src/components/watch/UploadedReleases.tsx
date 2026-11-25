@@ -1,6 +1,7 @@
 import './design/release-journey.css';
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { useEffect, useState } from 'react';
+import { recallView, rememberView } from '@/watch/view-memory';
 import { navigate } from '@/nav';
 import { uploadVerdict } from '@/watch/upload-verdict';
 import {downloadUploadedRecord,uploadedReleaseDecision,type UploadedRelease as Upload} from '@/watch/uploaded-release';
@@ -32,10 +33,15 @@ function UploadedReleaseScope({search,installationId,collection='attempts'}:{sea
   const fullDetail=params.get('uploadView')==='detail';
   const statusFilter=params.get('uploadStatus')??'all';
   const pageSize=parsePageSize(params.get('uploadPageSize')) as PageSize;
+  const listIdentity=JSON.stringify([installationId,workspaceId,collection,before,statusFilter,pageSize,searchQuery,retry]);
   const identity=JSON.stringify([installationId,workspaceId,collection,before,statusFilter,pageSize,searchQuery,selectedId,retry]);
-  const [data,setData]=useState<{identity:string;uploads:Upload[];linked:Upload|null;nextCursor:string|null;error:string|null}|null>(null);
-  const current=data?.identity===identity?data:null;
+  type Loaded={identity:string;listIdentity:string;uploads:Upload[];linked:Upload|null;nextCursor:string|null;error:string|null};
+  // A return visit starts from the last list this tab showed, and choosing another release keeps the
+  // list on screen while it refreshes, so the table never empties and refills.
+  const [data,setData]=useState<Loaded|null>(()=>recallView<Loaded>(`uploads:${identity}`)??null);
+  const current=data?.identity===identity?data:data&&!data.error&&data.listIdentity===listIdentity?{...data,linked:data.linked?.id===selectedId?data.linked:null}:null;
   const loading=current===null,error=current?.error??null,uploads=current?.uploads??[],nextCursor=current?.nextCursor??null;
+  const refreshing=data?.identity!==identity;
   let trail:(string|null)[]=[null];
   if(before){
     try{const parsed:unknown=JSON.parse(params.get('uploadTrail')??'');if(Array.isArray(parsed)&&parsed.length<=50&&parsed[0]===null&&parsed.at(-1)===before&&parsed.every(value=>value===null||typeof value==='string'&&value.length>0&&value.length<=128))trail=parsed;else trail=[null,before];}catch{trail=[null,before];}
@@ -59,12 +65,12 @@ function UploadedReleaseScope({search,installationId,collection='attempts'}:{sea
           } else if(detail.status!==404 && detail.status!==403) throw new Error('Could not refresh the selected release. Try again.');
         }
         if(controller.signal.aborted)return;
-        setData({identity,uploads:body.uploads,linked,nextCursor:body.nextCursor??null,error:null});
+        setData(rememberView<Loaded>(`uploads:${identity}`,{identity,listIdentity,uploads:body.uploads,linked,nextCursor:body.nextCursor??null,error:null}));
         if([...body.uploads,...(linked?[linked]:[])].some(u=>u.status==='queued'||u.status==='running'))timer=setTimeout(()=>void refresh(),2000);
-      } catch(err){if(!controller.signal.aborted)setData({identity,uploads:[],linked:null,nextCursor:null,error:err instanceof Error?err.message:'Could not load uploads.'});}
+      } catch(err){if(!controller.signal.aborted)setData({identity,listIdentity,uploads:[],linked:null,nextCursor:null,error:err instanceof Error?err.message:'Could not load uploads.'});}
     }
     void refresh();return()=>{controller.abort();clearTimeout(timer);};
-  },[installationId,selectedId,workspaceId,before,statusFilter,collection,pageSize,searchQuery,identity]);
+  },[installationId,selectedId,workspaceId,before,statusFilter,collection,pageSize,searchQuery,identity,listIdentity]);
   const label=(u:Upload)=>uploadVerdict(u.status,u.report_json);
   const select=(id:string)=>{const p=new URLSearchParams(search);p.set('upload',id);p.delete('release');p.delete('preview');p.delete('uploadFinding');p.delete('uploadTab');p.delete('uploadView');navigate(`/watch/releases?${p}`);};
   const newScan=()=>{const p=new URLSearchParams();if(installationId)p.set('install',String(installationId));if(workspaceId)p.set('workspace',workspaceId);p.set('mode','package');navigate(`/watch/scan${p.size?`?${p}`:''}`);};
@@ -101,7 +107,7 @@ function UploadedReleaseScope({search,installationId,collection='attempts'}:{sea
           {selected.receipt_json!=null?<Button variant="outline" onClick={()=>downloadUploadedRecord(selected)} aria-label="Download signed scan record"><Download className="size-3.5" aria-hidden/>Signed record</Button>:null}
           {(selected.status==='failed'||selected.status==='done')?<Button variant="outline" disabled={selected.source_origin_id!=null&&!workspaceId} onClick={()=>{if(selected.source_origin_id!=null){if(workspaceId)navigate(`/watch/sources?${new URLSearchParams({workspace:workspaceId,configure:'website'})}`);}else newScan();}}>{selected.source_origin_id!=null?'Open website controls':'Upload a new attempt'}</Button>:null}
         </div>
-      </article>:selectedId?<article className="uploaded-detail rel-panel" aria-live="polite"><p className="rel-panel-note">This upload is unavailable in the current workspace. Select another release.</p></article>:null}</div>}
+      </article>:selectedId&&!refreshing?<article className="uploaded-detail rel-panel" aria-live="polite"><p className="rel-panel-note">This upload is unavailable in the current workspace. Select another release.</p></article>:null}</div>}
     {!fullDetail&&!loading&&!error&&(filtered.length>10||before||nextCursor||pageSize>10)?<ListPagination label="Builds" pageSize={pageSize} onPageSizeChange={size=>page([null],size)} page={trail.length-1} count={filtered.length} hasPrevious={before!==null} hasNext={nextCursor!==null} onPrevious={()=>page(trail.slice(0,-1))} onNext={()=>{if(nextCursor)page([...trail,nextCursor]);}}/>:null}
   </section>;
 }

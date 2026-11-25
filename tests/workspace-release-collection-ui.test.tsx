@@ -3,9 +3,10 @@ import {cleanup,render,screen,fireEvent} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {WorkspaceReleaseCollection} from '../src/components/watch/WorkspaceReleaseCollection';
 import {navigate} from '../src/nav';
+import {forgetViews} from '../src/watch/view-memory';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
 vi.mock('../src/components/watch/UploadedReleases',()=>({UploadedReleases:({collection}:{collection:string})=><div>Collection: {collection}</div>}));
-afterEach(()=>{cleanup();vi.clearAllMocks();});
+afterEach(()=>{cleanup();forgetViews();vi.clearAllMocks();});
 it('offers only real artifact collections and scopes tab changes',()=>{
  render(<WorkspaceReleaseCollection search="?workspace=one&uploadStatus=attention"/>);
  expect(screen.getByRole('heading',{name:'Releases'})).toBeTruthy();

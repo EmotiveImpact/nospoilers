@@ -5,9 +5,10 @@ import userEvent from '@testing-library/user-event';
 import {afterEach,expect,it,vi} from 'vitest';
 import {UploadedReleases} from '../src/components/watch/UploadedReleases';
 import {radixUiTestSupport} from './helpers/radix-ui';
+import {forgetViews} from '../src/watch/view-memory';
 
 radixUiTestSupport();
-afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
+afterEach(()=>{cleanup();forgetViews();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 const upload=(index:number)=>({id:`upload-${index}`,installation_id:7,workspace_id:'team',target:index===64?'distant build.zip':`build-${index}.zip`,status:'done',artifact_sha256:'abc',created_at:'2026-10-03T10:00:00Z',report_json:{ok:true,status:'passed',kind:'zip',fileCount:2,findings:[]},receipt_json:null,error:null});
 const rows=Array.from({length:65},(_,index)=>upload(index));
 

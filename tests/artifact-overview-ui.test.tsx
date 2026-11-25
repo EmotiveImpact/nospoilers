@@ -3,8 +3,9 @@ import {cleanup,render,screen,fireEvent,act,within} from '@testing-library/react
 import {it,expect,vi,afterEach} from 'vitest';
 import {ArtifactOverview} from '../src/components/watch/ArtifactOverview';
 import {navigate} from '../src/nav';
+import {forgetViews} from '../src/watch/view-memory';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
-afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
+afterEach(()=>{cleanup();forgetViews();vi.unstubAllGlobals();vi.clearAllMocks();});
 const data={workspace:{name:'Product',archived:false},counts:{total:60,active:0,attention:2,passed:58},recent:[{id:'scan',target:'package.tgz',source_kind:'artifact',status:'done',created_at:'2026-09-05T12:00:00Z',verdict:'Policy passed'}]};
 function load(extra:Record<string,unknown>={}){vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,...extra})));render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace&install=7" nowLabel="Today"/>);}
 it('matches the approved composition without old panels, release-mode tabs or an evidence drawer',async()=>{
@@ -170,4 +171,18 @@ it('lists the other open alerts in Needs you, below the priority alert',async()=
  expect(within(needs).getByText('2 alerts need a response')).toBeTruthy();
  fireEvent.click(within(needs).getByRole('button',{name:'Open Alerts response queue, 3 alerts need response'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
+});
+it('shows the last overview straight away on a return visit while a fresh copy loads behind it',async()=>{
+ load();await screen.findByRole('heading',{name:'Your latest release evidence is ready.'});
+ cleanup();
+ // The second visit's request never answers: the page must not empty while it waits.
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace&install=7" nowLabel="Today"/>);
+ expect(screen.getByRole('heading',{name:'Your latest release evidence is ready.'})).toBeTruthy();
+ expect(screen.queryByText('Loading workspace overview…')).toBeNull();
+ cleanup();
+ // Another workspace never borrows it.
+ render(<ArtifactOverview workspaceId="other" search="?workspace=other" nowLabel="Today"/>);
+ expect(screen.queryByRole('heading',{name:'Your latest release evidence is ready.'})).toBeNull();
+ expect(screen.getByText('Loading workspace overview…')).toBeTruthy();
 });

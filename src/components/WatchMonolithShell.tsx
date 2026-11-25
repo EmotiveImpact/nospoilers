@@ -1,4 +1,3 @@
-import { useAnimate, useReducedMotion } from "motion/react";
 import { RailWatchList } from "@/components/watch/RailWatchList";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -301,34 +300,50 @@ export function WatchMonolithShell({
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("watch-rail-head", opts.collapsed ? "px-1.5" : "px-3")}>
-        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "flex-col justify-center" : "justify-between")}>
-          <a
-            href={hrefFor("overview")}
-            onClick={(event) => { go(event, hrefFor("overview")); closeNav(); }}
-            className={cn("flex min-w-0 items-center text-snow hover:text-snow", opts.collapsed ? "justify-center" : "flex-1")}
-            aria-label={opts.collapsed ? "NoSpoilers overview" : undefined}
-          >
-            {opts.collapsed ? (
-              <img src="/assets/brand/nospoilers-mark-white.png" alt="" className="size-7 object-contain" />
-            ) : (
+        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
+          {opts.collapsed && opts.showToggle ? (
+            // Collapsed: the mark is the expand button, and hovering the rail swaps the mark for the panel icon.
+            <button
+              type="button"
+              className="watch-rail-collapse group/toggle relative inline-flex size-8 shrink-0 items-center justify-center rounded-[7px]"
+              aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!opts.collapsed}
+              aria-keyshortcuts="["
+              title="Expand sidebar  ["
+              onClick={toggleCollapsed}
+            >
+              <img
+                src="/assets/brand/nospoilers-mark-white.png"
+                alt=""
+                className="size-7 object-contain transition-opacity duration-150 group-hover/rail:opacity-0 group-focus-visible/toggle:opacity-0 motion-reduce:transition-none"
+              />
+              <PanelLeft className="absolute size-4 opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100 group-focus-visible/toggle:opacity-100 motion-reduce:transition-none" aria-hidden />
+            </button>
+          ) : (
+            <a
+              href={hrefFor("overview")}
+              onClick={(event) => { go(event, hrefFor("overview")); closeNav(); }}
+              className="flex min-w-0 flex-1 items-center text-snow hover:text-snow"
+            >
               <img
                 src="/assets/brand/nospoilers-wordmark.png"
                 alt="NoSpoilers"
                 className="watch-rail-wordmark block h-[38px] w-auto max-w-[152px] object-contain"
               />
-            )}
-          </a>
-          {opts.showToggle ? (
+            </a>
+          )}
+          {opts.showToggle && !opts.collapsed ? (
+            // Expanded: the collapse button stays out of the way until the rail is hovered or the button has focus.
             <button
               type="button"
-              className="watch-rail-collapse inline-flex size-7 shrink-0 items-center justify-center rounded-[7px]"
+              className="watch-rail-collapse inline-flex size-7 shrink-0 items-center justify-center rounded-[7px] opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
               aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!opts.collapsed}
               aria-keyshortcuts="["
-              title={opts.collapsed ? "Expand sidebar  [" : "Collapse sidebar  ["}
+              title="Collapse sidebar  ["
               onClick={toggleCollapsed}
             >
-              {opts.collapsed ? <PanelLeft className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
+              <PanelLeftClose className="size-4" aria-hidden />
             </button>
           ) : null}
           {!opts.showToggle?<button type="button" className="watch-rail-close" aria-label="Close watch navigation" onClick={closeNav}><X size={20} aria-hidden/></button>:null}
@@ -447,13 +462,8 @@ export function WatchMonolithShell({
     </>
   );
 
-  const reduceMotion = useReducedMotion();
-  // Fade each new page in without remounting it, so focus and page state survive the change.
-  const [viewScope, animateView] = useAnimate<HTMLDivElement>();
-  useEffect(() => {
-    if (reduceMotion || !viewScope.current) return;
-    animateView(viewScope.current, { opacity: [0, 1], y: [4, 0] }, { duration: 0.18, ease: [0.2, 0.7, 0.2, 1] });
-  }, [route.view, reduceMotion, animateView, viewScope]);
+  // Pages change in place with no fade: pages show their last view straight away (see view-memory),
+  // so a fade on every click only added one more change of state.
   const PageIcon = watchViewIcon(watchPath(route.view));
   return (
     <TooltipProvider>
@@ -541,7 +551,7 @@ export function WatchMonolithShell({
             "[&_.watch-guidance]:hidden",
           )}
         >
-          <div ref={viewScope} className="watch-view-enter">{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</div>
+          <div className="watch-view">{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</div>
         </div>
         </div>
       </div>

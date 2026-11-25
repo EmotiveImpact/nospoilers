@@ -3,6 +3,7 @@ import { Package, Globe, ArrowUpRight, ArrowRight, ChevronRight } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { navigate } from '@/nav';
 import { overviewNextAction } from './overview-next-action';
+import { recallView, rememberView } from '@/watch/view-memory';
 import './artifact-overview.css';
 
 type Overview={connectedActivity?:Array<{installationId:number;name:string;queued:number;running:number}>;workspace:{name:string;archived:boolean};counts:{total:number;active:number;attention:number;completedAttention?:number;attemptAttention?:number;passed:number};hostedSources?:Array<{installationId:number;name:string;total:number;passed:number;attention:number}>;alertCounts?:{open:number;waiting:number;done:number;mine:number};priorityAlert?:{id:number;title:string;body:string;kind:string;findings:{rule:string;path:string;severity?:string}[]|null;created_at:string;acknowledged_at:string|null;resolved_at:string|null;status:'open'|'waiting'}|null;websiteCoverage?:{total:number;attention:number;delayed:number;unverified?:number;unchecked?:number};recent:Array<{id:string;target:string;status:string;created_at:string;completed_at?:string|null;source_kind:'website'|'artifact';verdict:string}>};
@@ -30,12 +31,15 @@ function overviewHeading(row:Overview['recent'][number]|undefined) {
  if(priorityRank(row)<4)return 'A release result needs review.';
  return 'Your latest release evidence is ready.';
 }
+type OverviewData=Overview & {connectedCoverage?:{total:number;paused:number;unavailable?:number;unknown:number;delayed:number;recent:number;connections?:Array<{installationId:number;name:string}>}};
 function OverviewScope({workspaceId,search,name}:{workspaceId:string;search:string;name?:string}) {
- const [data,setData]=useState<(Overview & {connectedCoverage?:{total:number;paused:number;unavailable?:number;unknown:number;delayed:number;recent:number;connections?:Array<{installationId:number;name:string}>}})|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
+ // A return visit shows the last overview at once; the refresh below replaces it quietly.
+ const memoryKey=`overview:${workspaceId}`;
+ const [data,setData]=useState<OverviewData|null>(()=>recallView<OverviewData>(memoryKey)??null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
-  async function refresh(){try{const response=await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/overview`,{signal:controller.signal});const body=await response.json();if(!response.ok||!body.counts||!Array.isArray(body.recent))throw new Error('Workspace overview could not be loaded.');if(controller.signal.aborted)return;setData(body);setError('');const active=body.counts.active>0||body.connectedActivity?.some((item:{queued:number;running:number})=>item.queued+item.running>0);timer=setTimeout(()=>void refresh(),active?3000:30000);}catch(err){if(!controller.signal.aborted)setError(err instanceof Error?err.message:'Workspace overview could not be loaded.');}}
+  async function refresh(){try{const response=await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/overview`,{signal:controller.signal});const body=await response.json();if(!response.ok||!body.counts||!Array.isArray(body.recent))throw new Error('Workspace overview could not be loaded.');if(controller.signal.aborted)return;setData(rememberView(memoryKey,body));setError('');const active=body.counts.active>0||body.connectedActivity?.some((item:{queued:number;running:number})=>item.queued+item.running>0);timer=setTimeout(()=>void refresh(),active?3000:30000);}catch(err){if(!controller.signal.aborted)setError(err instanceof Error?err.message:'Workspace overview could not be loaded.');}}
   void refresh();return()=>{controller.abort();clearTimeout(timer);};
- },[workspaceId,retry]);
+ },[workspaceId,retry,memoryKey]);
 
  function href(view:string,extra:Record<string,string>={}) {
   const params=new URLSearchParams({workspace:workspaceId});
