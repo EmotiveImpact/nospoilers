@@ -96,6 +96,8 @@ button.np-ft:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .np-seg button[aria-pressed="true"] { background: var(--np-raised); color: var(--np-t1); }
 .np-seg button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .np-net { display: block; width: 100%; height: auto; }
+.np-net-narrow { display: none; max-width: 400px; margin: 0 auto; }
+.np-net-narrow .np-netkey text { font: 10.5px var(--font-ui, inherit); fill: var(--np-t3); }
 .np-net .np-nn { font: 500 12px var(--font-ui, inherit); fill: var(--np-t1); }
 .np-net .np-ns { font: 11px var(--font-ui, inherit); fill: var(--np-t3); }
 .np-net .np-ns.is-exposed { fill: var(--np-red-text); }
@@ -190,7 +192,9 @@ button.np-ft:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .np-fkey em { margin-left: 0; width: 100%; }
 }
 @container (max-width: 560px) {
-  .np-net { display: none; }
+  /* The wide map stays readable to screen readers; only the phone map is drawn. */
+  .np-net-wide { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .np-net-narrow { display: block; }
   .np-netbox { padding-bottom: 14px; }
   .np-vtl-tag { display: none; }
   .np-vtl { height: 78px; }

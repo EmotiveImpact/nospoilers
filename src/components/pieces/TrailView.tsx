@@ -47,7 +47,7 @@ export function TrailView({model,now,sourcesFoot}:{model:ReleaseTrailModel;now?:
           </div>:<span>First check pending</span>}
           <span className={serving?'is-bad':undefined}><i className={`np-dot is-${serving?'exposed':model.summary.tone==='good'||view==='found'?'clear':'unknown'}`} aria-hidden/>{headline}</span>
         </div>
-        <SourceNet title={title} caption={`CHECKED ${trailTime(model.release.createdAt,now).toUpperCase()} UTC`} sources={sources}/>
+        <SourceNet title={title} caption={`CHECKED ${trailTime(model.release.createdAt,now).toUpperCase()} UTC`} sources={sources} now={now}/>
       </div>
       <aside className="np-hostbox" aria-label="Connected sources">
         <h3 className="np-label">Connected sources<span>{view==='found'&&foundAt?trailTime(foundAt,now):'now'}</span></h3>
