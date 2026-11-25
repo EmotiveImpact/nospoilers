@@ -49,6 +49,7 @@ it('keeps connected export and shows an uploaded filename while linking the exac
  const create=vi.fn(()=> 'blob:test');Object.defineProperty(URL,'createObjectURL',{configurable:true,value:create});Object.defineProperty(URL,'revokeObjectURL',{configurable:true,value:vi.fn()});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
  render(<ReleasesScreen/>);expect(screen.getByText('app.tgz')).toBeTruthy();expect(screen.queryByText(coordinate)).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'View evidence'}));expect(new URL(state.navigate.mock.lastCall[0],'http://localhost').searchParams.get('release')).toBe('7');
+ state.navigate.mockClear();fireEvent.click(screen.getByText('app.tgz'));expect(new URL(state.navigate.mock.lastCall[0],'http://localhost').searchParams.get('release')).toBe('7');
  fireEvent.click(screen.getByRole('button',{name:'Export ledger'}));
  await waitFor(()=>expect(create).toHaveBeenCalled());expect(state.loadJson).toHaveBeenCalledWith('/api/releases/export?installationId=7');
 });
