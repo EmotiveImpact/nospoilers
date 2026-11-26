@@ -4,9 +4,9 @@ import {act,cleanup,render,screen,fireEvent,waitFor} from '@testing-library/reac
 import {it,expect,vi,afterEach} from 'vitest';
 import {OrganizationBilling} from '../src/components/watch/OrganizationBilling';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
-const data={stripe:true,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}};
+const data={polar:true,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}};
 it('does not offer a working payment action on an unconfigured host',async()=>{
-  const fetcher=vi.fn(async()=>new Response(JSON.stringify({...data,stripe:false})));vi.stubGlobal('fetch',fetcher);
+  const fetcher=vi.fn(async()=>new Response(JSON.stringify({...data,polar:false})));vi.stubGlobal('fetch',fetcher);
   render(<OrganizationBilling id="org"/>);
   expect(await screen.findByText('Billing is not configured on this host. No payment can be taken here.')).toBeTruthy();
   expect((screen.getByRole('button',{name:'Continue to secure checkout'}) as HTMLButtonElement).disabled).toBe(true);
@@ -35,7 +35,7 @@ it('clears old billing data and selections immediately when organisation identit
  view.rerender(<OrganizationBilling id="other"/>);
  expect(screen.queryByRole('radio',{name:'Solo'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Continue to secure checkout'})).toBeNull();
- await act(async()=>resolveBilling(Response.json({...data,stripe:false})));
+ await act(async()=>resolveBilling(Response.json({...data,polar:false})));
  expect(await screen.findByRole('radio',{name:'Solo'})).toHaveProperty('checked',true);
  expect(screen.getByRole('button',{name:'Continue to secure checkout'})).toHaveProperty('disabled',true);
 });
@@ -68,7 +68,7 @@ it('withholds stale payment controls while retrying billing capability',async()=
  await userEvent.click(await screen.findByRole('button',{name:'Continue to secure checkout'}));
  await userEvent.click(await screen.findByRole('button',{name:'Retry billing'}));
  expect(screen.queryByRole('button',{name:'Continue to secure checkout'})).toBeNull();
- await act(async()=>resolveBilling(Response.json({...data,stripe:false})));
+ await act(async()=>resolveBilling(Response.json({...data,polar:false})));
  expect(await screen.findByRole('button',{name:'Continue to secure checkout'})).toHaveProperty('disabled',true);
 });
 
@@ -112,7 +112,7 @@ it('sends workspace context and never treats a successful return as verified pay
  await userEvent.click(screen.getByRole('button',{name:'Continue to secure checkout'}));
  expect(fetcher).toHaveBeenCalledWith('/api/billing/checkout',expect.objectContaining({body:JSON.stringify({organizationId:'org',plan:'solo',interval:'month',workspaceId:'workspace'})}));
 });
-it('does not present an unrecognised active Stripe subscription as paid coverage',async()=>{
+it('does not present an unrecognised active Polar subscription as paid coverage',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,billing:{...data.billing,hasCustomer:true,status:'active',subscribed:true,plan:null}})));
  render(<OrganizationBilling id="org"/>);
  expect(await screen.findByText('Coverage is inactive')).toBeTruthy();

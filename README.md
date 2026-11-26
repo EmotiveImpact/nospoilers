@@ -39,7 +39,8 @@ Railway coordinator and isolated Vercel Sandbox path exist. Production GitHub we
 returns 200, and live clean/fail-closed/denied-egress/timeout/cleanup Sandbox checks passed.
 Normal customer login is still GitHub-only until Neon Auth is enabled; the complete hosted
 sign-in-to-saved-result journey, remaining isolation checks, notification delivery and accessibility
-acceptance are still open. Stripe is deliberately deferred. Read **[docs/STATUS.md](docs/STATUS.md)**.
+acceptance are still open. Billing runs through Polar (merchant of record) and stays closed until its
+settings exist; see **[docs/BILLING-POLAR.md](docs/BILLING-POLAR.md)**. Read **[docs/STATUS.md](docs/STATUS.md)**.
 
 | File | Job |
 | --- | --- |
@@ -188,7 +189,7 @@ it to finish Phase 1. Contents write is not enough for those actions.
 
 Or set `GITHUB_PROOF_TOKEN` to a **fine-grained** PAT for **only**
 `EmotiveImpact/nospoilers-throwaway` with Contents: write. Do not use a classic `repo` PAT.
-Do not publicize a product repository. Stripe and Resend stay dark without keys.
+Do not publicize a product repository. Polar billing and Resend stay dark without keys.
 
 If GitHub cannot reach your laptop, start a webhook relay (leave `npm run dev` running):
 
@@ -248,9 +249,10 @@ Create the app. Then:
 6. Webhook secret → `GITHUB_WEBHOOK_SECRET` (at least 32 random characters)
 7. `SESSION_SECRET` → a **different** long random string (at least 32 characters). Neon and https
    origins refuse to boot if this is missing, short, a known default, or equal to the webhook secret.
-8. Optional Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and Solo/Team monthly+yearly
-   price IDs. Checkout and `/api/webhooks/stripe` stay 503 until all six are set. Point Stripe at
-   `/api/webhooks/stripe`. Do not commit live secrets.
+8. Optional Polar billing: `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, and the four Solo/Team
+   monthly and yearly product IDs (`POLAR_SERVER=sandbox` while testing). Checkout, the portal and
+   `/api/webhooks/polar` stay 503 until all six are set. Full steps in
+   [docs/BILLING-POLAR.md](docs/BILLING-POLAR.md). Do not commit live secrets.
 
 Where to install: **Install App** on your user or org, only the throwaway repo until you trust it.
 

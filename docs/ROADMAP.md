@@ -32,7 +32,7 @@ The database and authorization foundation for this is complete. See
 - One real, private notification delivery and retry/failure check.
 - GitHub Actions CI after the account payment/spending-limit block is resolved.
 - Native 200% zoom and audible screen-reader checks.
-- Stripe sandbox prices, keys, webhooks and entitlement lifecycle when the owner resumes billing.
+- Polar sandbox products, token, webhook and entitlement lifecycle (see BILLING-POLAR.md).
 
 ## Then — optional proofs
 
@@ -56,7 +56,7 @@ Build only after paying demand or an explicit ask.
 | Scheduled CDN verify | On-demand verify is built |
 | WorkOS SSO / SCIM | Provider-neutral foundation is ready; add only after an explicit enterprise requirement or priority |
 | Native Vercel / Netlify / Cloudflare OAuth | Generic `/api/v1/deploy` is built |
-| GitHub Marketplace listing | After ~100 installs; Stripe remains checkout |
+| GitHub Marketplace listing | After ~100 installs; Polar remains checkout |
 | Aggregate Artifact Leads research | After review |
 | Employee Public Footprint | Separate repository. Not this app |
 

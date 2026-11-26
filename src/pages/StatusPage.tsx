@@ -4,7 +4,7 @@ type Health = {
   ok: boolean;
   name?: string;
   githubApp: boolean;
-  stripe?: boolean;
+  polar?: boolean;
   resend?: boolean;
   role?: "all" | "web" | "worker";
   ui?: boolean;
@@ -61,8 +61,8 @@ export function StatusPage() {
             <p className="text-sm text-snow">{health.githubApp ? "configured" : "not configured"}</p>
           </li>
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Stripe</p>
-            <p className="text-sm text-snow">{health.stripe ? "configured" : "not configured"}</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Polar billing</p>
+            <p className="text-sm text-snow">{health.polar ? "configured" : "not configured"}</p>
           </li>
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Resend</p>

@@ -61,7 +61,7 @@ and [Bugs and fixes](../bugsandfixes.md) before older chronological notes.
 Watch, the scanner, GitHub connection flows, billing enforcement, Release Ledger, release
 intelligence, Package Identity and the owner-only Disclosure Desk are implemented and tested.
 Normal customer login is still GitHub-only until the new Neon account email is verified and Managed
-Better Auth is connected. Stripe remains owner-deferred, real notification delivery is unaccepted,
+Better Auth is connected. Polar billing is coded and waits on the owner's Polar settings, real notification delivery is unaccepted,
 and the complete hosted sign-in → GitHub connection → isolated scan → saved result journey still
 needs proof. Remaining live sandbox adversarial checks and native accessibility checks are also open.
 
@@ -111,7 +111,7 @@ Artifact Leads and Disclosure Desk at `/internal/prospects`. Public GitHub/npm d
 
 | Piece | Code | Live? |
 | --- | --- | --- |
-| Stripe Checkout, portal, lifecycle webhooks | Yes. 503 until keys and four price IDs | No. `/api/health` `stripe: false` |
+| Polar checkout, customer portal, subscription webhooks | Yes. 503 until token, webhook secret and four product IDs ([BILLING-POLAR.md](BILLING-POLAR.md)) | No. `/api/health` `polar: false` |
 | Resend Watch email | Yes. Destinations save; send 503 without keys | No. `resend: false`. Inbox stays GitHub-login only. Desk `sent` stays false |
 | Vercel web/API | Yes | Fresh project and production domains are configured; verify each deployment against its intended commit |
 | Neon Postgres | Yes | Vercel and Railway were verified against the same fresh Neon project |
@@ -121,7 +121,7 @@ Artifact Leads and Disclosure Desk at `/internal/prospects`. Public GitHub/npm d
 | Neon Managed Better Auth | Provider-neutral database foundation is present | Not enabled; owner email verification and Auth endpoint setup remain |
 | WorkOS SSO/SCIM | Architecture documented | Not configured; later enterprise add-on only |
 
-Do not describe Stripe, email, Neon Auth, WorkOS or the complete customer journey as live merely
+Do not describe Polar billing, email, Neon Auth, WorkOS or the complete customer journey as live merely
 because their adapters or infrastructure foundations exist.
 
 ## Coded, not loop-proven on GitHub
@@ -171,6 +171,6 @@ Visual chrome is still being tightened against Linear comps in `/mockup-review/`
 4. Configure and prove one approved notification path without exposing private evidence.
 5. Resolve the GitHub Actions account payment/spending-limit block and rerun CI.
 6. Complete native 200% zoom and audible screen-reader checks.
-7. Return to Stripe sandbox checkout and entitlement acceptance when the owner resumes billing work.
+7. Run Polar sandbox checkout and entitlement acceptance once the owner has created the sandbox products and webhook.
 
 Until then, the product is suitable for controlled private beta rather than an open public launch.

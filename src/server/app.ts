@@ -3,6 +3,7 @@ import { parsePageSize } from '../watch/pagination.ts';
 import { assessSavedRelease, assessSavedUpload } from './release-assessment.ts';
 import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
+import { isIP } from "node:net";
 import { Hono, type Context } from "hono";
 import { readBoundedBody } from './bounded-body.ts';
 import { viewerWriteDenied } from './viewer-guard.ts';
@@ -11,7 +12,8 @@ import {createWorkspaceOrigin,verifyWorkspaceOrigin,listWorkspaceOrigins,changeW
 import {setWorkspaceOriginSchedule} from './workspace-origin-schedule.ts';
 import {workspaceTeam,inviteWorkspaceMember,pendingWorkspaceInvites,acceptWorkspaceInvite,revokeWorkspaceInvite,changeWorkspaceMember} from './workspace-membership.ts';
 import {listManagedOrganizations,organizationAccess,changeOrganizationAccess,managedBillingAccount,sourceBillingTarget} from './organization-access.ts';
-import {managedPersonalBillingAccount,personalStripeState,applyPersonalStripePatch} from './personal-billing.ts';
+import {managedPersonalBillingAccount} from './personal-billing.ts';
+import {applyPolarPatch,claimPolarWebhook,polarBillingState,type BillingAccount,type PolarBillingState} from './polar-billing.ts';
 import {moveUnusedWorkspaceConnection} from './workspace-connections.ts';
 import {listDeletionRequests,requestDeletion,withdrawDeletionRequest} from './deletion-requests.ts';
 import {workspaceEvidenceSettings} from './workspace-evidence-settings.ts';
@@ -38,8 +40,8 @@ import {
   jobProcessingMode,
   processRunsHttp,
   resendConfigured,
-  stripeConfigured,
-  stripePriceMap,
+  polarConfigured,
+  polarProductMap,
 } from "./config.ts";
 import { serveUi, uiIndexExists } from "./static.ts";
 import {
@@ -50,23 +52,24 @@ import {
   postResendEmail,
 } from "./email.ts";
 import {
-  STRIPE_ADMIN_ERROR,
-  STRIPE_NOT_LIVE_ERROR,
-  STRIPE_PLAN_ERROR,
-  STRIPE_SUBSCRIBE_FIRST_ERROR,
-  STRIPE_UNAVAILABLE_ERROR,
-  StripeApiError,
-  createStripePort,
-  parseStripeEvent,
-  parseStripeInterval,
-  parseStripePlan,
+  BILLING_ADMIN_ERROR,
+  BILLING_PLAN_ERROR,
+  BILLING_SUBSCRIBE_FIRST_ERROR,
+  POLAR_NOT_LIVE_ERROR,
+  POLAR_UNAVAILABLE_ERROR,
+  PolarApiError,
+  createPolarPort,
+  parseBillingInterval,
+  parseBillingPlan,
+  parsePolarEvent,
+  polarProductId,
+  polarSubscriptionCovers,
+  polarSubscriptionEnded,
+  polarSubscriptionPatch,
   remainingTrialDays,
-  stripeEventPatch,
-  stripePriceId,
-  stripeSubscriptionCovers,
-  verifyStripeSignature,
-  type StripePort,
-} from "./stripe.ts";
+  verifyPolarWebhook,
+  type PolarPort,
+} from "./polar.ts";
 import { cookieSettings } from "./cookies.ts";
 import { authOrigin } from "./auth-origin.ts";
 import { GithubApiError, type GithubPort } from "./github.ts";
@@ -230,7 +233,7 @@ import {
   rotationChecklist,
   summarizePermissionTest,
 } from "./install-test.ts";
-import { createStore, readSignedSession, signSession } from "./store.ts";
+import { readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
 import {stageUnboundGithubEvent} from './github-pending-events.ts';
 import {createGithubConnectionIntent,inspectGithubConnectionIntent} from './github-connection-intents.ts';
@@ -424,7 +427,7 @@ export type AppDeps = {
   slackFetch?: typeof fetch;
   webhookLookup?: WebhookHostLookup;
   notifier?: AlertNotifier;
-  stripe?: StripePort;
+  polar?: PolarPort;
   /** Email/password product sign-in. Absent means GitHub-only sign-in. */
   emailAuth?: { issuer: string; provider: EmailAuthProvider } | null;
 };
@@ -714,10 +717,10 @@ export function createApp(deps: AppDeps): Hono {
         ? { apiKey: deps.config.resendApiKey, fromEmail: deps.config.resendFromEmail }
         : undefined,
     });
-  const stripe =
-    deps.stripe ??
-    (deps.config.stripeSecretKey ? createStripePort(deps.config.stripeSecretKey) : null);
-  const prices = stripePriceMap(deps.config);
+  const polar =
+    deps.polar ??
+    (deps.config.polarAccessToken ? createPolarPort(deps.config.polarAccessToken, deps.config.polarServer) : null);
+  const products = polarProductMap(deps.config);
   const cookieName = "ns_session";
   const pendingScanCookieName = "ns_pending_scan";
   const pendingOriginCookieName = "ns_pending_origin";
@@ -1011,7 +1014,7 @@ export function createApp(deps: AppDeps): Hono {
       ok: true,
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
-      stripe: stripeConfigured(deps.config),
+      polar: polarConfigured(deps.config),
       resend: resendConfigured(deps.config),
       role: deps.config.processRole,
       ui: processRunsHttp(deps.config.processRole) && (await uiIndexExists(deps.config.uiRoot)),
@@ -1049,7 +1052,7 @@ export function createApp(deps: AppDeps): Hono {
     const body = {
       ready: databaseOk,
       githubApp: githubAppConfigured(deps.config),
-      stripe: stripeConfigured(deps.config),
+      polar: polarConfigured(deps.config),
       resend: resendConfigured(deps.config),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
@@ -1904,13 +1907,18 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
-  app.post("/api/webhooks/stripe", async (c) => {
-    if (!stripeConfigured(deps.config)) {
-      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+  app.post("/api/webhooks/polar", async (c) => {
+    if (!polarConfigured(deps.config)) {
+      return c.json({ error: POLAR_NOT_LIVE_ERROR }, 503);
     }
     const raw = await c.req.text();
-    if (!verifyStripeSignature(deps.config.stripeWebhookSecret, raw, c.req.header("stripe-signature"))) {
-      return c.json({ error: "Invalid signature." }, 400);
+    const headers = {
+      id: c.req.header("webhook-id"),
+      timestamp: c.req.header("webhook-timestamp"),
+      signature: c.req.header("webhook-signature"),
+    };
+    if (!verifyPolarWebhook(deps.config.polarWebhookSecret, raw, headers)) {
+      return c.json({ error: "Invalid signature." }, 403);
     }
     let parsed: unknown;
     try {
@@ -1918,44 +1926,36 @@ export function createApp(deps: AppDeps): Hono {
     } catch {
       return c.json({ error: "Invalid JSON." }, 400);
     }
-    const event = parseStripeEvent(parsed);
+    const event = parsePolarEvent(parsed, headers.id);
     if (!event) return c.json({ error: "Invalid event." }, 400);
-    // Claim and apply atomically: a failed database write must remain retryable by Stripe.
+    // Claim and apply atomically: a failed database write must remain retryable by Polar.
     const result=await deps.store.sql.transaction(async tx=>{
-      const transactionalStore=createStore(tx);
-      const claimed=await transactionalStore.claimStripeEvent(event.id,event.type);
-      if(!claimed)return {ok:true,duplicate:true};
-      const patch=stripeEventPatch(event,prices);
+      if(!await claimPolarWebhook(tx,event.id,event.type))return {ok:true,duplicate:true};
+      const patch=polarSubscriptionPatch(event,products);
       if(!patch)return {ok:true,skipped:true};
-      const personal=patch.installationId===null && (await tx.query(
-        `SELECT 1 FROM personal_organization_billing WHERE organization_id=$1::uuid OR stripe_customer_id=$2 OR stripe_subscription_id=$3 LIMIT 1`,
-        [patch.organizationId??null,patch.customerId,patch.subscriptionId],
-      )).rows.length>0;
-      const applied=personal?await applyPersonalStripePatch(tx,patch):await transactionalStore.applyStripeBillingPatch(patch);
+      const applied=await applyPolarPatch(tx,patch);
       return {ok:true,applied:applied.applied};
     });
     return c.json(result);
   });
 
-  function publicStripeBilling(state: {
-    trialEndsAt: string | null;
-    plan: string | null;
-    stripeCustomerId: string | null;
-    stripeSubscriptionId: string | null;
-    stripeStatus: string | null;
-    periodEnd: string | null;
-  }) {
+  function publicBilling(state: PolarBillingState) {
     return {
       plan: state.plan,
       trialEndsAt: state.trialEndsAt,
-      status: state.stripeStatus,
+      status: state.polarStatus,
       periodEnd: state.periodEnd,
-      hasCustomer: Boolean(state.stripeCustomerId),
-      subscribed: Boolean(parseStripePlan(state.plan)) && stripeSubscriptionCovers(state.stripeStatus),
+      hasCustomer: Boolean(state.polarCustomerId),
+      subscribed: Boolean(parseBillingPlan(state.plan)) && polarSubscriptionCovers(state.polarStatus),
     };
   }
 
-  async function billingTarget(userId:string,input:{organizationId?:unknown;installationId?:unknown}):Promise<{organizationId:string;installationId:number|null}>{
+  /** A subscription that still exists (even unpaid or paused) is managed in the portal, never replaced by a second checkout. */
+  function manageInPortal(state: PolarBillingState): boolean {
+    return Boolean(state.polarCustomerId && state.polarSubscriptionId && !polarSubscriptionEnded(state.polarStatus));
+  }
+
+  async function billingTarget(userId:string,input:{organizationId?:unknown;installationId?:unknown}):Promise<BillingAccount>{
     input=await sourceBillingTarget(deps.store.sql,input);
     if(typeof input.organizationId==='string' && input.installationId===undefined){
       const personal=(await deps.store.sql.query('SELECT 1 FROM product_organizations WHERE id::text=$1 AND legacy_personal_user_id IS NOT NULL',[input.organizationId])).rows.length>0;
@@ -1963,8 +1963,8 @@ export function createApp(deps: AppDeps): Hono {
     }
     return managedBillingAccount(deps.store.sql,userId,input);
   }
-  async function billingState(account:{organizationId:string;installationId:number|null}){
-    return account.installationId===null?personalStripeState(deps.store.sql,account.organizationId):deps.store.installationStripeState(account.installationId);
+  async function billingState(account:BillingAccount){
+    return polarBillingState(deps.store.sql,account);
   }
   async function billingReturnUrl(userId:string,organizationId:string,workspaceId:unknown){
     // Return destinations are fixed; billing authority alone does not grant workspace access.
@@ -1978,6 +1978,19 @@ export function createApp(deps: AppDeps): Hono {
     }
     return (result:'ok'|'canceled'|'returned')=>{const destination=new URL(url);destination.searchParams.set('billing',result);return destination.href;};
   }
+  async function openPortal(c:Context,account:BillingAccount,customerId:string,returnUrl:string,actor:{userId:string;login:string}){
+    const portal=await polar!.createPortalSession({customerId,returnUrl});
+    await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,actor.userId]);
+    if(account.installationId!==null && await deps.store.getInstallation(account.installationId))await deps.store.insertAuditEvent({
+      installationId:account.installationId,
+      actorLogin: actor.login,
+      action: "billing.portal",
+      summary: "Billing portal",
+      targetKind: "billing",
+      targetId: "portal",
+    });
+    return c.json({ url: portal.url, kind: "portal" });
+  }
   app.get("/api/billing", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -1986,7 +1999,7 @@ export function createApp(deps: AppDeps): Hono {
       try{
         const account=await billingTarget(user.userId,{organizationId,installationId:c.req.query('installationId')});
         const state=await billingState(account);
-        return state?c.json({stripe:stripeConfigured(deps.config),billing:publicStripeBilling(state)}):c.json({error:'Billing unavailable.'},404);
+        return state?c.json({polar:polarConfigured(deps.config),billing:publicBilling(state)}):c.json({error:'Billing unavailable.'},404);
       }catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
     }
     const installationId = queryInstallationId(c);
@@ -1996,16 +2009,16 @@ export function createApp(deps: AppDeps): Hono {
     catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
     if (!state) return c.json({ error: "Unknown installation." }, 404);
     return c.json({
-      stripe: stripeConfigured(deps.config),
-      billing: publicStripeBilling(state),
+      polar: polarConfigured(deps.config),
+      billing: publicBilling(state),
     });
   });
 
   app.post("/api/billing/checkout", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    if (!stripeConfigured(deps.config) || !stripe) {
-      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+    if (!polarConfigured(deps.config) || !polar) {
+      return c.json({ error: POLAR_NOT_LIVE_ERROR }, 503);
     }
     const limited = await rateLimited(
       c,
@@ -2023,40 +2036,34 @@ export function createApp(deps: AppDeps): Hono {
     try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
     catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
     const installationId=account.installationId;
-    const plan = parseStripePlan(body.plan);
-    const interval = parseStripeInterval(body.interval);
-    if (!plan || !interval) return c.json({ error: STRIPE_PLAN_ERROR }, 400);
+    const plan = parseBillingPlan(body.plan);
+    const interval = parseBillingInterval(body.interval);
+    if (!plan || !interval) return c.json({ error: BILLING_PLAN_ERROR }, 400);
     const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
-    if (state.stripeCustomerId && stripeSubscriptionCovers(state.stripeStatus)) {
+    if (manageInPortal(state)) {
       try {
-        const portal = await stripe.createPortalSession({
-          customerId: state.stripeCustomerId,
-          returnUrl: returnUrl('returned'),
-        });
-        await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
-        return c.json({ url: portal.url, kind: "portal" });
+        return await openPortal(c,account,state.polarCustomerId!,returnUrl('returned'),user);
       } catch (error) {
-        const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+        const message = error instanceof PolarApiError ? error.message : POLAR_UNAVAILABLE_ERROR;
         return c.json({ error: message }, 502);
       }
     }
-    const priceId = stripePriceId(prices, plan, interval);
-    const trialPeriodDays = remainingTrialDays(state.trialEndsAt);
+    const productId = polarProductId(products, plan, interval);
+    const ip = requestIp(c);
     try {
-      const session = await stripe.createCheckoutSession({
-        customerId: state.stripeCustomerId,
-        priceId,
+      const checkout = await polar.createCheckout({
+        productId,
+        customerId: state.polarCustomerId,
         successUrl: returnUrl('ok'),
-        cancelUrl: returnUrl('canceled'),
-        clientReferenceId: installationId===null?account.organizationId:String(installationId),
-        trialPeriodDays,
+        returnUrl: returnUrl('canceled'),
+        trialDays: remainingTrialDays(state.trialEndsAt),
+        customerIpAddress: isIP(ip) ? ip : null,
         metadata: {
           ...(installationId===null?{}:{installationId:String(installationId)}),
           organizationId:account.organizationId,
           plan,
           interval,
-          priceId,
         },
       });
       await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'checkout')",[crypto.randomUUID(),account.organizationId,user.userId]);
@@ -2068,9 +2075,9 @@ export function createApp(deps: AppDeps): Hono {
         targetKind: "billing",
         targetId: `${plan}:${interval}`,
       });
-      return c.json({ url: session.url, kind: "checkout" });
+      return c.json({ url: checkout.url, kind: "checkout" });
     } catch (error) {
-      const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+      const message = error instanceof PolarApiError ? error.message : POLAR_UNAVAILABLE_ERROR;
       return c.json({ error: message }, 502);
     }
   });
@@ -2078,8 +2085,8 @@ export function createApp(deps: AppDeps): Hono {
   app.post("/api/billing/portal", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    if (!stripeConfigured(deps.config) || !stripe) {
-      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+    if (!polarConfigured(deps.config) || !polar) {
+      return c.json({ error: POLAR_NOT_LIVE_ERROR }, 503);
     }
     const limited = await rateLimited(
       c,
@@ -2092,31 +2099,17 @@ export function createApp(deps: AppDeps): Hono {
     const body = jsonObj(await c.req.json().catch(() => ({})));
     let account;
     try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
-    catch(error){return c.json({error:error instanceof Error?error.message:STRIPE_ADMIN_ERROR},errorStatus(error));}
+    catch(error){return c.json({error:error instanceof Error?error.message:BILLING_ADMIN_ERROR},errorStatus(error));}
     let returnUrl;
     try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
     catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
-    const installationId=account.installationId;
     const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
-    if (!state.stripeCustomerId) return c.json({ error: STRIPE_SUBSCRIBE_FIRST_ERROR }, 409);
+    if (!state.polarCustomerId) return c.json({ error: BILLING_SUBSCRIBE_FIRST_ERROR }, 409);
     try {
-      const portal = await stripe.createPortalSession({
-        customerId: state.stripeCustomerId,
-        returnUrl: returnUrl('returned'),
-      });
-      await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
-      if(installationId!==null && await deps.store.getInstallation(installationId))await deps.store.insertAuditEvent({
-        installationId,
-        actorLogin: user.login,
-        action: "billing.portal",
-        summary: "Billing portal",
-        targetKind: "billing",
-        targetId: "portal",
-      });
-      return c.json({ url: portal.url, kind: "portal" });
+      return await openPortal(c,account,state.polarCustomerId,returnUrl('returned'),user);
     } catch (error) {
-      const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+      const message = error instanceof PolarApiError ? error.message : POLAR_UNAVAILABLE_ERROR;
       return c.json({ error: message }, 502);
     }
   });
@@ -2537,7 +2530,7 @@ export function createApp(deps: AppDeps): Hono {
         githubApp: githubAppConfigured(deps.config),
         developmentLogin: developmentLoginEnabled(),
         emailAuth: Boolean(deps.emailAuth),
-        stripe: stripeConfigured(deps.config),
+        polar: polarConfigured(deps.config),
         resend: resendConfigured(deps.config),
       });
     }
@@ -2549,7 +2542,7 @@ export function createApp(deps: AppDeps): Hono {
       installations,
       githubApp: githubAppConfigured(deps.config),
       developmentLogin: developmentLoginEnabled(),
-      stripe: stripeConfigured(deps.config),
+      polar: polarConfigured(deps.config),
       resend: resendConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
       hostedOrigin: hostedOrigin.origin,

@@ -63,7 +63,7 @@ normal worker; the isolated installer job stays on ice. See `docs/ELECTRON.md`.
 
 **Exit codes:** 0 clean, 1 failed-policy, 2 error or inconclusive (never a passing receipt).
 
-**Not live:** Stripe keys, Resend keys, Railway worker deploy, `nospoilers.dev`. Adapters and the
+**Not live:** Polar settings, Resend keys, Railway worker deploy, `nospoilers.dev`. Adapters and the
 process split (`NOSPOILERS_ROLE=web|worker`) are in code. Vercel serves web/API on a temporary
 alias. Marketplace is optional after ~100 installs.
 
@@ -120,7 +120,7 @@ They pay a **monthly subscription for coverage**, not scan credits. Credits trai
 
 - **5-day full trial**, then the card bills.
 - Yearly: 10 months for the price of 12 (~$290 / ~$990).
-- No “3 free repos forever.” No GitHub Marketplace as the only checkout (Stripe on our site). Marketplace cut is 5% if we list later; Stripe is ~2.9% + $0.30 (+ billing %).
+- No “3 free repos forever.” No GitHub Marketplace as the only checkout (Polar on our site, as merchant of record). Marketplace cut is 5% if we list later; Polar is 5% + 50¢ on Starter or 3.8% + 40¢ on Pro ($20 a month), tax handled.
 - Fair use in the terms; unlimited-**feeling** in the UI. Cap **concurrency** (how many unpacks at once), not a “47 of 500 scans left” meter.
 - If abuse: queue them, email, offer Team / high-volume. Do not surprise-charge $400.
 - No public Enterprise tile until a real company asks.
@@ -184,13 +184,13 @@ Invariants:
 3. Idempotent on GitHub `delivery_id`.
 4. Two priorities so fat scans never block “repo went public.”
 5. Cloud spend cap so a retry bug cannot run overnight.
-6. Secrets (PEM, webhook secret, Stripe, Resend) never in git.
+6. Secrets (PEM, webhook secret, Polar, Resend) never in git.
 
 Queue pickup is event-driven inside the API process: a successful enqueue wakes the worker
 immediately. A 15-minute timer is recovery only. Do not return to sub-second empty-queue polling;
 it keeps serverless Postgres awake without improving webhook latency.
 
-**v1 ops:** Vercel web/API + Railway worker + Neon Postgres + registrar DNS + Stripe + GitHub App + Resend. Queue **inside Postgres** first. Not Inngest ($99) until revenue. Not Vercel/Cloudflare Workers for unpack. Not GCP/AWS day one.
+**v1 ops:** Vercel web/API + Railway worker + Neon Postgres + registrar DNS + Polar + GitHub App + Resend. Queue **inside Postgres** first. Not Inngest ($99) until revenue. Not Vercel/Cloudflare Workers for unpack. Not GCP/AWS day one.
 
 **Do not buy domain / Railway / Resend / Stripe until a human approves.** The throwaway loop already works.
 
@@ -220,7 +220,7 @@ Actions stay as optional fail-closed CI. OAuth is only “log into the website.�
 | Railway always-on 1 CPU / 1 GB | often ~$30 / mo (Hobby $5 / Pro $20 is a **floor**, not a cap) |
 | Neon Postgres | free → ~$5–25 Launch |
 | Resend | free 3,000/mo (100/day); $20 for 50k |
-| Stripe | no monthly; ~2.9% + $0.30 per US charge |
+| Polar | no monthly on Starter; 5% + 50¢ per charge (merchant of record, tax included) |
 | Domain nospoilers.dev | ~$10–15 / year (available last we checked; `.com`/`.app`/`.io` taken) |
 | GitHub App | $0 |
 | Fly Managed Postgres | $38+ — **skip**, use Neon |
@@ -250,7 +250,7 @@ Adapters are written. Keys and accounts are not.
 | **Domain** (`nospoilers.dev`) | Public URL and email DNS. GitHub can already hit a tunnel or the Vercel alias. |
 | **Railway worker** | Always-on job consumer. Vercel is web/API. Code split exists. |
 | **Resend** | Real email. Needs a domain and keys. Until then, Watch + logs. |
-| **Stripe** | Take money after the loop is real. This host has no keys. |
+| **Polar** | Take money after the loop is real. Coded; this host has no Polar settings yet. |
 
 ### Phase C — later / ice
 
@@ -326,7 +326,7 @@ NoSpoilers Phase B go-live. Read docs/PRODUCT.md. Phase A loop already works.
 - Buy/configure nospoilers.dev DNS (Cloudflare).
 - Deploy API + workers to Fly.io (uncommon port; always-on web process; worker process; spend cap). Neon for Postgres.
 - Plug Resend into AlertNotifier (keep log adapter as fallback). Done in code; live only when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set. Do not mail Disclosure Desk or invites.
-- Stripe: 5-day trial, Solo $29, Team $99, yearly 10-for-12. After trial/cancel, kill unpaid hosted installs (stop jobs/alerts; dashboard paywall). Do not DRM the CLI.
+- Polar: 5-day trial, Solo $29, Team $99, yearly costs 10 months for 12 months of coverage. After trial/cancel, kill unpaid hosted installs (stop jobs/alerts; dashboard paywall). Do not DRM the CLI.
 - Production GitHub App webhook URL on the real domain.
 - Do not add Slack, Marketplace, GCP, or make-private unless already specified.
 ```
