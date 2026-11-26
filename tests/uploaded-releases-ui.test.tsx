@@ -5,10 +5,11 @@ radixUiTestSupport();
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UploadedReleases } from '../src/components/watch/UploadedReleases';
+import {forgetViews} from '../src/watch/view-memory';
 
 const upload=(id:string,installation_id:number)=>({id,installation_id,target:`${id}.zip`,status:'failed',artifact_sha256:'abc',created_at:'2026-09-05T10:00:00Z',report_json:null,receipt_json:null,error:'Scan failed'});
 const json=(body:unknown)=>Promise.resolve(new Response(JSON.stringify(body)));
-afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
+afterEach(()=>{cleanup();forgetViews();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 
 describe('uploaded release workspace flow',()=>{
   it('changes the decision preview with selection and restores it from the URL',async()=>{
@@ -162,4 +163,26 @@ it('opens the selected full brief through one primary action and preserves works
  const params=new URLSearchParams(window.location.search);
  expect(params.get('workspace')).toBe('team');expect(params.get('install')).toBe('7');
  expect(params.get('upload')).toBe('second');expect(params.get('uploadView')).toBe('detail');
+});
+
+describe('calm release list',()=>{
+  it('keeps the list and shows the chosen release at once while the list refreshes',async()=>{
+    vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7),upload('second',7)]})));
+    const view=render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first"/>);
+    await screen.findByRole('heading',{name:'first.zip'});
+    vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+    view.rerender(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=second"/>);
+    expect(screen.getByRole('button',{name:/first.zip/})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'second.zip'})).toBeTruthy();
+    expect(screen.queryByText(/This upload is unavailable/)).toBeNull();
+  });
+  it('starts a return visit from the last list this tab showed',async()=>{
+    vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7)]})));
+    render(<UploadedReleases installationId={7} search="?workspace=team&install=7"/>);
+    await screen.findByRole('heading',{name:'first.zip'});
+    cleanup();
+    vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+    render(<UploadedReleases installationId={7} search="?workspace=team&install=7"/>);
+    expect(screen.getByRole('heading',{name:'first.zip'})).toBeTruthy();
+  });
 });

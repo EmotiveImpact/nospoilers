@@ -2,9 +2,10 @@
 import {act,cleanup,render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
+import {forgetViews} from '../src/watch/view-memory';
 const nav=vi.hoisted(()=>vi.fn());
 vi.mock('../src/nav',()=>({navigate:nav}));
-afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
+afterEach(()=>{cleanup();forgetViews();vi.unstubAllGlobals();vi.clearAllMocks();});
 it('waits for an off-page deep link and exposes a retry for failed detail loading',async()=>{
  const alert={id:1,kind:'push_sensitive_path',title:'Sensitive path in owner/repo',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,acknowledged_at:null,resolved_at:null};
  let resolveDetail!:(response:Response)=>void;
@@ -117,4 +118,12 @@ it('renders real website evidence, requires a resolution note and preserves the 
  await waitFor(()=>expect(fetcher.mock.calls.some(([url,init])=>url.endsWith('/respond')&&JSON.parse(String(init?.body)).action==='resolve')).toBe(true));
  expect(nav).toHaveBeenCalledWith('/watch/alerts?workspace=workspace&alert=9&tab=done');
  expect(fetcher.mock.calls.some(([url])=>url.includes('/check'))).toBe(false);
+});
+it('shows no counts while the first list loads, so zeros never flash before the real numbers',()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace"/>);
+ expect(screen.getByRole('heading',{name:'Alerts'})).toBeTruthy();
+ expect(screen.queryByText(/Nothing needs a response/)).toBeNull();
+ expect(screen.queryByText(/need(s)? a response/)).toBeNull();
+ for(const tab of screen.getAllByRole('tab'))expect(tab.textContent).not.toMatch(/\d/);
 });

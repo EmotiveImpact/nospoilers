@@ -14,18 +14,24 @@ import {WebsiteAlertRecheck} from './WebsiteAlertRecheck';
 import {Button} from '@/components/ui/button';
 import {ListPagination} from './ListPagination';
 import {parsePageSize,type PageSize} from '@/watch/pagination';
+import {recallView,rememberView} from '@/watch/view-memory';
 
 type WorkspaceAlert=Alert&{installation_id:number|null;scan_attempt_id:string|null;source_origin_id:number|null};
 type Detail={alert:WorkspaceAlert;events:AlertEvent[];nextEventsCursor?:string|null};
 type Props={workspaceId:string;search:string};
+type AlertPage={nextCursor:string|null;coverageHistoryCount:number;counts:{open:number;waiting:number;mine:number;done:number}};
+type Identity={id:string;login:string;canRespond:boolean};
+// The last list and open alert this tab showed for one exact query, so a return visit starts from it.
+type Remembered={loadedSearch:string;page:AlertPage;alerts:WorkspaceAlert[];identity:Identity;sourceCount:number;detail?:{key:string;id:number;body:Detail|null}};
 export function WorkspaceAlerts(props:Props){return <WorkspaceAlertPage key={props.workspaceId} {...props}/>;}
+function alertMemoryQuery(search:string){const p=new URLSearchParams(search);return [parseWatchRoute('/watch/alerts',search).tab,p.get('mine')==='1'?'1':'0',parsePageSize(p.get('pageSize')),p.get('before')??'',p.get('source')??''].join(':');}
 async function json<T>(url:string,signal:AbortSignal,body?:unknown):Promise<T>{
  const response=await fetch(url,{signal,credentials:'include',...(body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})});
  const data=await response.json();if(!response.ok)throw new Error(data.error??'Alerts could not be loaded.');return data;
 }
 function WorkspaceAlertPage({workspaceId,search}:Props){
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/alerts`;
- const [loadedSearch,setLoadedSearch]=useState(search);
+ const [loadedSearch,setLoadedSearch]=useState(()=>recallView<Remembered>(`alerts:${base}?${alertMemoryQuery(search)}`)?.loadedSearch??search);
  const requestedRoute=parseWatchRoute('/watch/alerts',search);
  const requestedMine=new URLSearchParams(search).get('mine')==='1';
  const route={...requestedRoute,tab:parseWatchRoute('/watch/alerts',loadedSearch).tab},mine=new URLSearchParams(loadedSearch).get('mine')==='1';
@@ -40,16 +46,18 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const cursors=knownCursors.includes(before)?knownCursors:before?[null,before]:[null];
  const pageIndex=cursors.indexOf(before);
  const eventBefore=new URLSearchParams(search).get('eventBefore');
- const [page,setPage]=useState<{nextCursor:string|null;coverageHistoryCount:number;counts:{open:number;waiting:number;mine:number;done:number}}|null>(null);
- const [alerts,setAlerts]=useState<WorkspaceAlert[]>([]),[state,setState]=useState<WatchSectionState>({status:'loading'});
- const [identity,setIdentity]=useState({id:'',login:'',canRespond:false});
- const [sourceCount,setSourceCount]=useState(0);
- const [detail,setDetail]=useState<Detail|null>(null),[activity,setActivity]=useState<WatchSectionState>({status:'loading'});
- const [detailResultId,setDetailResultId]=useState<number|null>(null);
+ const memoryKey=`alerts:${base}?${alertMemoryQuery(search)}`;
+ const [remembered]=useState(()=>recallView<Remembered>(memoryKey));
+ const [page,setPage]=useState<AlertPage|null>(remembered?.page??null);
+ const [alerts,setAlerts]=useState<WorkspaceAlert[]>(remembered?.alerts??[]),[state,setState]=useState<WatchSectionState>(remembered?{status:'ready'}:{status:'loading'});
+ const [identity,setIdentity]=useState<Identity>(remembered?.identity??{id:'',login:'',canRespond:false});
+ const [sourceCount,setSourceCount]=useState(remembered?.sourceCount??0);
+ const [detail,setDetail]=useState<Detail|null>(remembered?.detail?.body??null),[activity,setActivity]=useState<WatchSectionState>(remembered?.detail?{status:'ready'}:{status:'loading'});
+ const [detailResultId,setDetailResultId]=useState<number|null>(remembered?.detail?.id??null);
  const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[exportError,setExportError]=useState<string|null>(null);
  const [notes,setNotes]=useState<Record<number,string>>({}),[assignees,setAssignees]=useState<Record<number,string>>({});
  const mutation=useRef<AbortController|null>(null);
- const loadedDetailKey=useRef<string|null>(null);
+ const loadedDetailKey=useRef<string|null>(remembered?.detail?.key??null);
  useEffect(()=>()=>mutation.current?.abort(),[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(!mutation.current)setRevision(n=>n+1);},30_000);return()=>window.clearInterval(timer);},[]);
  useEffect(()=>{const request=new AbortController();
@@ -61,12 +69,15 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
    const query=new URLSearchParams({status:requestedRoute.tab,mine:requestedMine?'1':'0',pageSize:String(pageSize)});if(before)query.set('before',before);if(source)query.set('source',source);
    const result=await json<{alerts:WorkspaceAlert[];nextCursor:string|null;sourceCount:number;coverageHistoryCount:number;counts:{open:number;waiting:number;mine:number;done:number}}>(`${base}?${query}`,request.signal);
    if(request.signal.aborted)return;
-   setIdentity({...me.user,canRespond:!settings.workspace.archived_at&&['owner','admin','member'].includes(settings.workspace.role)});
+   const nextIdentity={...me.user,canRespond:!settings.workspace.archived_at&&['owner','admin','member'].includes(settings.workspace.role)};
+   setIdentity(nextIdentity);
    const loadedParams=new URLSearchParams({tab:requestedRoute.tab,pageSize:String(pageSize)});if(requestedMine)loadedParams.set('mine','1');if(before)loadedParams.set('before',before);if(source)loadedParams.set('source',source);
+   const previous=recallView<Remembered>(memoryKey);
+   rememberView<Remembered>(memoryKey,{loadedSearch:`?${loadedParams}`,page:result,alerts:result.alerts,identity:nextIdentity,sourceCount:result.sourceCount,detail:previous?.detail});
    setLoadedSearch(`?${loadedParams}`);setPage(result);setSourceCount(result.sourceCount);setAlerts(result.alerts);setState({status:'ready'});
   })().catch(e=>{if(!request.signal.aborted){setAlerts([]);setDetail(null);setIdentity({id:'',login:'',canRespond:false});setState({status:'error',message:e.message});}});
   return()=>request.abort();
- },[workspaceId,base,revision,requestedRoute.tab,requestedMine,before,source,pageSize]);
+ },[workspaceId,base,revision,requestedRoute.tab,requestedMine,before,source,pageSize,memoryKey]);
  const actionableAlerts=alerts.filter(isAlertQueueActionable);
  const excludedAlerts=alerts.filter(alert=>!isAlertQueueActionable(alert));
  const listed=filterDeskAlerts(actionableAlerts,route.tab,identity.login,mine,identity.id) as WorkspaceAlert[];
@@ -80,10 +91,10 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  useEffect(()=>{if(selectedId===null)return;const request=new AbortController();
   const requestKey=`${selectedId}:${eventBefore??''}`;
   if(loadedDetailKey.current!==requestKey)setActivity({status:'loading'});
-  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){loadedDetailKey.current=requestKey;setDetailResultId(selectedId);setDetail(isAlertQueueActionable(body.alert)?body:null);setActivity({status:'ready'});}})
+  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){const shown=isAlertQueueActionable(body.alert)?body:null;const listed=recallView<Remembered>(memoryKey);if(listed)rememberView<Remembered>(memoryKey,{...listed,detail:{key:requestKey,id:selectedId,body:shown}});loadedDetailKey.current=requestKey;setDetailResultId(selectedId);setDetail(shown);setActivity({status:'ready'});}})
    .catch(e=>{if(!request.signal.aborted){loadedDetailKey.current=null;setDetailResultId(selectedId);setDetail(null);setActivity({status:'error',message:e.message});}});
   return()=>request.abort();
- },[base,selectedId,revision,eventBefore]);
+ },[base,selectedId,revision,eventBefore,memoryKey]);
  const go=(updates:Record<string,string|null>)=>{const params=new URLSearchParams(search);if('alert' in updates||'tab' in updates||'mine' in updates)params.delete('eventBefore');for(const [key,value] of Object.entries(updates)){if(value===null)params.delete(key);else params.set(key,value);}navigate(`/watch/alerts?${params}`);};
  const retry=()=>{setState({status:'loading'});setActivity({status:'loading'});setRevision(n=>n+1);};
  const act=async(action:'acknowledge'|'resolve'|'reopen'|'assign')=>{

@@ -5,10 +5,11 @@ import {radixUiTestSupport} from './helpers/radix-ui';
 radixUiTestSupport();
 import {cleanup,render,screen,fireEvent,waitFor,act} from '@testing-library/react';
 import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
+import {forgetViews} from '../src/watch/view-memory';
 const nav=vi.hoisted(()=>vi.fn());
 vi.mock('../src/nav',()=>({navigate:nav}));
 vi.mock('../src/components/WatchAlertsWorkspace',()=>({WatchAlertsWorkspace:(p:any)=><section><p>{p.state.status}</p><h1>{p.selected?.title}</h1>{p.relatedReleases}{p.pagination}<button disabled={!p.canRespond} onClick={()=>p.onAction('acknowledge')}>Acknowledge</button><span>{p.events.length} events</span></section>}));
-afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();vi.clearAllMocks();});
+afterEach(()=>{cleanup();forgetViews();vi.unstubAllGlobals();vi.restoreAllMocks();vi.clearAllMocks();});
 it('disables responses when selected detail fails even if the feed and membership succeed',async()=>{
  const alert={id:9,kind:'web_origin_scan',title:'Website exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,scan_attempt_id:'attempt',acknowledged_at:null};
  const fetcher=vi.fn(async(url:string)=>{
@@ -147,4 +148,24 @@ it('does not commit a delayed alert page after page-size or status changes',asyn
  expect(screen.getByRole('button',{name:'Next'})).toHaveProperty('disabled',true);
  expect(screen.getByText('Page 1 · 0 alerts')).toBeTruthy();
  expect(fetcher.mock.calls.some(([url])=>url.includes('status=waiting&mine=0&pageSize=30')&&!url.includes('before='))).toBe(true);
+});
+it('opens the last list and alert at once on a return visit, then refreshes quietly',async()=>{
+ const alert={id:9,kind:'web_origin_scan',title:'Website exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,scan_attempt_id:'attempt',acknowledged_at:null};
+ const answer=(url:string)=>{
+  if(url==='/api/me')return new Response(JSON.stringify({user:{id:'owner',login:'Owner'}}));
+  if(url.endsWith('/evidence-settings'))return new Response(JSON.stringify({workspace:{role:'owner',archived_at:null}}));
+  if(url.endsWith('/alerts/9'))return new Response(JSON.stringify({alert,events:[{id:1}]}));
+  if(url.includes('/alerts?'))return new Response(JSON.stringify({alerts:[alert],nextCursor:null,sourceCount:1,coverageHistoryCount:0,counts:{open:1,waiting:0,done:0,mine:0}}));
+  throw new Error(`Unexpected request ${url}`);
+ };
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>answer(url)));
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=9"/>);
+ await screen.findByText('1 events');
+ cleanup();
+ const pending=vi.fn(()=>new Promise<Response>(()=>{}));vi.stubGlobal('fetch',pending);
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=9"/>);
+ expect(screen.getByText('ready')).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Website exposure'})).toBeTruthy();
+ expect(screen.getByText('1 events')).toBeTruthy();
+ await waitFor(()=>expect(pending.mock.calls.some(([url])=>String(url).endsWith('/evidence-settings'))).toBe(true));
 });

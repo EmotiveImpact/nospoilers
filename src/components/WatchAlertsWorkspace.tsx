@@ -148,6 +148,8 @@ export function WatchAlertsWorkspace({
   const [assignOpen, setAssignOpen] = useState(false);
   const responseDisabled = previewing || !canRespond || busy;
   const hasSources = sourceCount > 0;
+  // Until the first list arrives the counts are unknown, so show none rather than zeros that then jump.
+  const countsKnown = counts !== undefined || state.status !== "loading";
   const queueCounts = counts ?? {
     open: filterDeskAlerts(allAlerts, "open", login).length,
     waiting: filterDeskAlerts(allAlerts, "waiting", login).length,
@@ -211,7 +213,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts</h1><p className="watch-page-status"><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</p></div>
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts</h1><p className="watch-page-status">{countsKnown ? <><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</> : "\u00a0"}</p></div>
         {!previewing ? (
           <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="outline" onClick={onExport}>
@@ -254,7 +256,7 @@ export function WatchAlertsWorkspace({
                   value === "open" && count > 0 && "text-danger-text",
                 )}
               >
-                {count}
+                {countsKnown ? count : "\u00a0"}
               </span>
             </span>
           </button>
