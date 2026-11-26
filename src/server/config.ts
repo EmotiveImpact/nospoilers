@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseFromEmail } from "./email.ts";
+import { parsePolarServer, type PolarProductMap, type PolarServer } from "./polar.ts";
 
 export type AppConfig = {
   port: number;
@@ -31,12 +32,15 @@ export type AppConfig = {
   authRateWindowMs: number;
   discoveryRateLimit: number;
   discoveryRateWindowMs: number;
-  stripeSecretKey: string;
-  stripeWebhookSecret: string;
-  stripePriceSoloMonthly: string;
-  stripePriceSoloYearly: string;
-  stripePriceTeamMonthly: string;
-  stripePriceTeamYearly: string;
+  /** Polar organisation access token (checkouts:write, customer_sessions:write). */
+  polarAccessToken: string;
+  polarWebhookSecret: string;
+  /** `sandbox` talks to sandbox-api.polar.sh; anything else is production. */
+  polarServer: PolarServer;
+  polarProductSoloMonthly: string;
+  polarProductSoloYearly: string;
+  polarProductTeamMonthly: string;
+  polarProductTeamYearly: string;
   resendApiKey: string;
   resendFromEmail: string;
   processRole: ProcessRole;
@@ -159,12 +163,13 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     authRateWindowMs: Math.max(1000, envInt("AUTH_RATE_WINDOW_MS", 60 * 60 * 1000)),
     discoveryRateLimit: Math.max(0, envInt("DISCOVERY_RATE_LIMIT", 20)),
     discoveryRateWindowMs: Math.max(1000, envInt("DISCOVERY_RATE_WINDOW_MS", 60 * 60 * 1000)),
-    stripeSecretKey: env("STRIPE_SECRET_KEY"),
-    stripeWebhookSecret: env("STRIPE_WEBHOOK_SECRET"),
-    stripePriceSoloMonthly: env("STRIPE_PRICE_SOLO_MONTHLY"),
-    stripePriceSoloYearly: env("STRIPE_PRICE_SOLO_YEARLY"),
-    stripePriceTeamMonthly: env("STRIPE_PRICE_TEAM_MONTHLY"),
-    stripePriceTeamYearly: env("STRIPE_PRICE_TEAM_YEARLY"),
+    polarAccessToken: env("POLAR_ACCESS_TOKEN"),
+    polarWebhookSecret: env("POLAR_WEBHOOK_SECRET"),
+    polarServer: parsePolarServer(env("POLAR_SERVER", "production")),
+    polarProductSoloMonthly: env("POLAR_PRODUCT_SOLO_MONTHLY"),
+    polarProductSoloYearly: env("POLAR_PRODUCT_SOLO_YEARLY"),
+    polarProductTeamMonthly: env("POLAR_PRODUCT_TEAM_MONTHLY"),
+    polarProductTeamYearly: env("POLAR_PRODUCT_TEAM_YEARLY"),
     resendApiKey: env("RESEND_API_KEY"),
     resendFromEmail: env("RESEND_FROM_EMAIL"),
     processRole: parseProcessRole(env("NOSPOILERS_ROLE", "all")),
@@ -187,14 +192,16 @@ export function githubAppConfigured(config: AppConfig): boolean {
   );
 }
 
-export function stripeConfigured(config: AppConfig): boolean {
+/** Checkout, the portal and the webhook stay closed until every Polar value is set. */
+export function polarConfigured(config: AppConfig): boolean {
+  const products = polarProductMap(config);
+  const ids = [products.soloMonthly, products.soloYearly, products.teamMonthly, products.teamYearly];
   return Boolean(
-    config.stripeSecretKey &&
-      config.stripeWebhookSecret &&
-      config.stripePriceSoloMonthly &&
-      config.stripePriceSoloYearly &&
-      config.stripePriceTeamMonthly &&
-      config.stripePriceTeamYearly,
+    config.polarAccessToken &&
+      config.polarWebhookSecret &&
+      ids.every(Boolean) &&
+      // One product per plan and interval, or entitlement could not tell them apart.
+      new Set(ids).size === ids.length,
   );
 }
 
@@ -202,11 +209,11 @@ export function resendConfigured(config: AppConfig): boolean {
   return Boolean(config.resendApiKey && parseFromEmail(config.resendFromEmail));
 }
 
-export function stripePriceMap(config: AppConfig) {
+export function polarProductMap(config: AppConfig): PolarProductMap {
   return {
-    soloMonthly: config.stripePriceSoloMonthly,
-    soloYearly: config.stripePriceSoloYearly,
-    teamMonthly: config.stripePriceTeamMonthly,
-    teamYearly: config.stripePriceTeamYearly,
+    soloMonthly: config.polarProductSoloMonthly,
+    soloYearly: config.polarProductSoloYearly,
+    teamMonthly: config.polarProductTeamMonthly,
+    teamYearly: config.polarProductTeamYearly,
   };
 }

@@ -8,7 +8,7 @@ import "@/website/website.css"
 type Me = {
   user: { login: string } | null
   githubApp?: boolean
-  stripe?: boolean
+  polar?: boolean
   installations?: {
     id: number
     account_login: string
@@ -34,7 +34,7 @@ export function PricingPage() {
         const admin = (body.installations ?? []).find((row) => row.role === "admin")
         setInstallId(admin?.id ?? body.installations?.[0]?.id ?? null)
       } catch {
-        if (!cancelled) setMe({ user: null, stripe: false, installations: [] })
+        if (!cancelled) setMe({ user: null, polar: false, installations: [] })
       }
     })()
     return () => {
@@ -42,10 +42,10 @@ export function PricingPage() {
     }
   }, [])
 
-  const stripeLive = Boolean(me?.stripe)
+  const billingLive = Boolean(me?.polar)
   const adminInstalls = (me?.installations ?? []).filter((row) => row.role === "admin")
   const selected = adminInstalls.find((row) => row.id === installId) ?? adminInstalls[0] ?? null
-  const canCheckout = Boolean(me?.user && stripeLive && selected)
+  const canCheckout = Boolean(me?.user && billingLive && selected)
 
   function openWatch() {
     if (me?.user) {
@@ -119,7 +119,7 @@ export function PricingPage() {
           <section className="nsw-section" aria-labelledby="pricing-terms"><h2 id="pricing-terms">Understand the commercial boundary</h2>
             <p>Annual prices equal ten monthly payments for a year of coverage. Prices are shown in US dollars. Review the configured checkout, its final total and applicable terms before confirming a purchase.</p>
             <p>Additional workspaces share the organisation’s subscription and allowance; they do not create new trials or unlimited scan capacity. Seat counts and workspace caps are not published as confirmed plan promises here.</p>
-            <p>{me === null ? 'Checking whether this host can offer the existing checkout flow…' : stripeLive ? 'Checkout is available only to an eligible administrator through the existing billing flow.' : 'Checkout availability is not confirmed on this host. Open the app or contact support; no payment is taken by these pages.'} Independent-workspace billing is managed in the application; this public page preserves the existing connection-based checkout flow.</p>
+            <p>{me === null ? 'Checking whether this host can offer the existing checkout flow…' : billingLive ? 'Checkout is available only to an eligible administrator through the existing billing flow.' : 'Checkout availability is not confirmed on this host. Open the app or contact support; no payment is taken by these pages.'} Independent-workspace billing is managed in the application; this public page preserves the existing connection-based checkout flow.</p>
           </section>
           <section className="nsw-section" aria-labelledby="pricing-trial"><h2 id="pricing-trial">What happens after the trial?</h2>
             <p>New scans and monitoring require active entitlement. An unpaid trial does not grant permanent scanning access. Creating a new workspace does not reset the trial. Selecting a file publicly is intake, not an anonymous scan or a vulnerability report.</p>

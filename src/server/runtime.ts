@@ -4,7 +4,7 @@ import {
   databaseMode,
   processRunsJobs,
   resendConfigured,
-  stripeConfigured,
+  polarConfigured,
   type AppConfig,
 } from "./config.ts";
 import { Hono } from 'hono';
@@ -146,7 +146,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       logJson("info", "runtime.start", {
         database: databaseMode(config.databaseUrl),
         githubApp: githubAppConfigured(config),
-        stripe: stripeConfigured(config),
+        polar: polarConfigured(config),
         resend: resendConfigured(config),
         role: config.processRole,
         jobs: runJobs,

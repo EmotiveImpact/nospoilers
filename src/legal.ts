@@ -70,7 +70,7 @@ const PRIVACY: LegalDoc = {
     {
       heading: "Processors",
       paragraphs: [
-        "GitHub is the identity provider and the source of webhook and API events. Application data lives in Neon Postgres (AWS us-east-2) when the hosted runtime is on Neon. When card billing ships, Stripe will process payments. We do not put artifact source in those systems.",
+        "GitHub is the identity provider and the source of webhook and API events. Application data lives in Neon Postgres (AWS us-east-2) when the hosted runtime is on Neon. Polar (polar.sh) is our merchant of record: it runs checkout, takes payment, handles sales tax and VAT, and issues invoices and receipts. When you subscribe, Polar receives your billing email, billing country and the plan you choose. Card details go to Polar and its payment processor, never to us. We do not put artifact source in those systems.",
       ],
     },
     {
@@ -105,9 +105,9 @@ const TERMS: LegalDoc = {
     {
       heading: "Coverage, trial, and unpaid installs",
       paragraphs: [
-        "New installations start a 5-day full trial. Solo is $29 per month. Team is $99 per month. Yearly is 10 months for the price of 12. Fair use lives in these terms: we cap concurrent unpacks, not a visible scan counter. Abuse may be queued or moved to Team.",
+        "New installations start a 5-day full trial. Solo is $29 per month. Team is $99 per month. Yearly costs the same as 10 monthly payments for 12 months of coverage. Fair use lives in these terms: we cap concurrent unpacks, not a visible scan counter. Abuse may be queued or moved to Team.",
         "When the trial ends unpaid, or a paid plan lapses, we still acknowledge GitHub webhooks with HTTP 200 so deliveries stay healthy, but we do not enqueue hosted work, scan, poll, or alert for that installation. Watch will tell you to subscribe to keep watching.",
-        "Card checkout through Stripe on our site is the billing path. An install admin starts Checkout or the billing portal. Checkout is live only when Stripe keys are configured. GitHub Marketplace is optional later; it is not the only way we will charge.",
+        "Checkout through Polar, our merchant of record, is the billing path. Polar is the seller on your invoice and handles the tax. An install admin starts checkout or opens the billing portal. Checkout is live only when Polar is configured on this host. GitHub Marketplace is optional later; it is not the only way we will charge.",
       ],
     },
     {
@@ -210,7 +210,7 @@ const SUPPORT: LegalDoc = {
       heading: "What we can help with",
       paragraphs: [
         "GitHub App install, Watch alerts that should have fired, hosted scan failures, trial and coverage state, and deletion requests. CLI and Action issues on your machine are in scope when you can share a pack you are allowed to send — never paste secrets.",
-        "Custom domains are not live yet. Email delivery is live only when Resend keys are set. Stripe checkout is live only when keys are configured. If you write about a host that cannot charge or send mail, you will get an honest “not live” rather than a fake ticket number.",
+        "Custom domains are not live yet. Email delivery is live only when Resend keys are set. Polar checkout is live only when it is configured. If you write about a host that cannot charge or send mail, you will get an honest “not live” rather than a fake ticket number.",
       ],
     },
     {
@@ -238,7 +238,7 @@ const REFUNDS: LegalDoc = {
       heading: "When card billing is live",
       paragraphs: [
         "Monthly Solo and Team subscriptions can be cancelled at any time. Cancellation stops later renewals. The current paid month is not pro-rated except where law requires it.",
-        "Yearly plans (10 months for the price of 12) may be refunded in full if you ask within 14 days of the first charge and have not used hosted scanning in a way that makes a refund unreasonable. After that, unused yearly time is not refunded except where law requires it.",
+        "Yearly plans (12 months for the price of 10) may be refunded in full if you ask within 14 days of the first charge and have not used hosted scanning in a way that makes a refund unreasonable. After that, unused yearly time is not refunded except where law requires it. Refunds go back through Polar to the original payment method.",
         "Failed payments and cancellations stop hosted work for that GitHub installation the same way an unpaid trial does. Chargebacks may end coverage immediately.",
       ],
     },

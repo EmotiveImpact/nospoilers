@@ -36,7 +36,7 @@ export type Me = {
   githubApp: boolean;
   developmentLogin?: boolean;
   emailAuth?: boolean;
-  stripe?: boolean;
+  polar?: boolean;
   resend?: boolean;
   installUrl?: string;
   hostedOrigin?: string;

@@ -23,12 +23,12 @@ function ready() {
  return {config,env};
 }
 
-it('accepts a complete non-Stripe worker only after its local isolated scan probe passes',async()=>{
+it('accepts a complete worker without billing keys only after its local isolated scan probe passes',async()=>{
  const {config,env}=ready();const scanProbe=vi.fn(async()=>undefined);
  expect(hostedWorkerReadinessProblems(config,env)).toEqual([]);
  await expect(assertHostedWorkerReady(config,{env,scanProbe})).resolves.toBeUndefined();
  expect(scanProbe).toHaveBeenCalledOnce();
- expect(config.stripeSecretKey).toBe('');
+ expect(config.polarAccessToken).toBe('');
 });
 
 it('accepts a digest-pinned Vercel Sandbox executor with explicit project credentials',()=>{

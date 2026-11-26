@@ -124,8 +124,8 @@ const sessions=new Map<string,string>();for(const actor of ['owner','reviewer','
 const app=createApp({store,github:stubGithub(),config:loadConfig({
  sessionSecret:secret,receiptSecret:secret,appBaseUrl:base,databaseUrl:'pglite://:memory:',
  githubAppId:'',githubPrivateKey:'',githubWebhookSecret:'',githubClientId:'',githubClientSecret:'',githubAppSlug:'',githubDiscoveryToken:'',
- adminToken:'',adminGithubLogin:'',stripeSecretKey:'',stripeWebhookSecret:'',
- stripePriceSoloMonthly:'',stripePriceSoloYearly:'',stripePriceTeamMonthly:'',stripePriceTeamYearly:'',
+ adminToken:'',adminGithubLogin:'',polarAccessToken:'',polarWebhookSecret:'',
+ polarProductSoloMonthly:'',polarProductSoloYearly:'',polarProductTeamMonthly:'',polarProductTeamYearly:'',
  resendApiKey:'',resendFromEmail:'',cronSecret:'',processRole:'web',
 }),wakeWorker:()=>{}});
 const assurance=withReleaseAssurance(app,{receiptSecret:secret,scopeForRelease:async id=>{

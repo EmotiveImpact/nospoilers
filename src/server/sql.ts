@@ -26,6 +26,7 @@ import { organizationOwnershipSchema } from './organization-ownership-schema.ts'
 import { billingDurabilitySchema } from './billing-durability-schema.ts';
 import { productEventIntegritySchema } from './product-event-integrity-schema.ts';
 import { personalBillingSchema,personalStripeEventOrderSchema } from './personal-billing.ts';
+import { polarBillingSchema } from './polar-billing.ts';
 import { workspaceConnectionSchema } from './workspace-connection-schema.ts';
 import { deletionRequestSchema } from './deletion-requests.ts';
 import { alertReleaseLinksSchema } from './alert-release-links.ts';
@@ -46,7 +47,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "123_product_identity";
+export const CURRENT_SCHEMA_MIGRATION = "125_polar_billing";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -1296,6 +1297,12 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     if((await tx.query("SELECT id FROM schema_migrations WHERE id='123_product_identity'")).rows.length)return;
     await tx.exec(productIdentitySchema);
     await tx.query("INSERT INTO schema_migrations(id) VALUES ('123_product_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='125_polar_billing'")).rows.length)return;
+    // 124 is reserved by the expiry sweep indexes on the open review branch.
+    await tx.exec(polarBillingSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('125_polar_billing')");
   });
 }
 

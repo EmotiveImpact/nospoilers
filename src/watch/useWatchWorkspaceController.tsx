@@ -284,7 +284,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [billing, setBilling] = useState<{
-    stripe: boolean;
+    polar: boolean;
     hasCustomer: boolean;
     subscribed: boolean;
   } | null>(null);
@@ -1003,12 +1003,12 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
     void (async () => {
       try {
         const body = await loadJson<{
-          stripe: boolean;
+          polar: boolean;
           billing: { hasCustomer: boolean; subscribed: boolean };
         }>(`/api/billing?installationId=${selectedInstallId}`);
         if (cancelled) return;
         setBilling({
-          stripe: body.stripe,
+          polar: body.polar,
           hasCustomer: body.billing.hasCustomer,
           subscribed: body.billing.subscribed,
         });
@@ -1072,7 +1072,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
 
   const { user, githubApp, installUrl, coverage: sessionCoverage, hostedOrigin, githubRunnersReachable } =
     me.data;
-  const stripeLive = Boolean(me.data.stripe);
+  const billingLive = Boolean(me.data.polar);
   const installations = me.data.installations ?? [];
   if (!user) {
     return (
@@ -1294,7 +1294,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
   const mineCount = controller.counts.mine;
   const resolvedCount = controller.counts.resolved;
   const billingControl =
-    !previewing && stripeLive && installAdmin && billing?.hasCustomer ? (
+    !previewing && billingLive && installAdmin && billing?.hasCustomer ? (
       <Button
         type="button"
         variant="outline"

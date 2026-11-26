@@ -250,7 +250,7 @@ function multiOrgFetcher(){
    const org=multiOrgs.find(row=>url.includes(`/${row.id}/`))!;
    return Response.json({organization:org,members:[{user_id:`user-${org.id}`,login:`owner-${org.id}`,role:'owner'}],events:[]});
   }
-  if(url.startsWith('/api/billing?'))return Response.json({stripe:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}});
+  if(url.startsWith('/api/billing?'))return Response.json({polar:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}});
   return Response.json({workspaces:multiOrgRows,organizations:multiOrgs,invites:[]});
  });
 }
@@ -303,7 +303,7 @@ it('defaults workspace creation to the current client organisation rather than t
 
 it('does not substitute another owned organisation billing when the current client subscription is owner-managed',async()=>{
  window.history.replaceState({},'','/watch/workspaces?workspace=w2&workspaceTab=billing');
- const fetcher=vi.fn(async(url:string,_init?:RequestInit)=>url.startsWith('/api/billing?')?Response.json({stripe:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}}):Response.json({workspaces:multiOrgRows,organizations:[multiOrgs[0],{...clientOrganization,billing_available:false}],invites:[]}));
+ const fetcher=vi.fn(async(url:string,_init?:RequestInit)=>url.startsWith('/api/billing?')?Response.json({polar:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}}):Response.json({workspaces:multiOrgRows,organizations:[multiOrgs[0],{...clientOrganization,billing_available:false}],invites:[]}));
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
  await screen.findByRole('heading',{name:'Subscription managed by your organisation owner'});
  expect(screen.queryByRole('region',{name:'Organisation billing'})).toBeNull();
@@ -338,7 +338,7 @@ it('omits unrelated workspace context when opening another managed organisation 
  window.history.replaceState({},'','/watch/workspaces?workspace=w1&workspaceTab=billing&billingOrganization=o2');
  const fetcher=vi.fn(async(url:string,init?:RequestInit)=>{
   if(init?.method)return Response.json({error:'Portal unavailable.'},{status:502});
-  if(url.startsWith('/api/billing?'))return Response.json({stripe:true,billing:{plan:'team',trialEndsAt:null,status:'active',periodEnd:null,hasCustomer:true,subscribed:true}});
+  if(url.startsWith('/api/billing?'))return Response.json({polar:true,billing:{plan:'team',trialEndsAt:null,status:'active',periodEnd:null,hasCustomer:true,subscribed:true}});
   return Response.json({workspaces:[workspace],organizations:multiOrgs,invites:[]});
  });vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
  await userEvent.click(await screen.findByRole('button',{name:'Manage subscription'}));
